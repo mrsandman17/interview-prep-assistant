@@ -12,6 +12,22 @@
 **Total Progress**: 4/8 PRs complete (50%) - PR #4 pending merge
 **Original Plan**: 21 individual steps → **Consolidated to 8 feature PRs**
 
+### MVP Requirements
+
+**✅ REQUIRED FOR MVP (3 PRs):**
+- **PR 1**: Backend Foundation - ✅ COMPLETE (PR #4 pending merge)
+- **PR 2**: Selection Algorithm - 🔄 READY TO START (backend logic for daily selection)
+- **PR 3**: Frontend Foundation + Dashboard - ⏳ PENDING (UI to interact with the app)
+
+**🎁 NICE-TO-HAVE ENHANCEMENTS (5 PRs):**
+- **PR 4**: Key Insights + Stats (analytics and insights capture)
+- **PR 5**: All Problems View (table view with sorting/filtering)
+- **PR 6**: Settings & Import/Export (configuration and data management)
+- **PR 7**: Polish & Error Handling (UX improvements)
+- **PR 8**: Final Integration & Testing (e2e tests)
+
+**Status**: 1/3 MVP PRs complete (33%) - **2 more PRs to working app**
+
 ---
 
 ## 🚨 CRITICAL: Subagent Usage Policy 🚨
@@ -32,7 +48,7 @@
 
 ---
 
-## PR 1: Backend Foundation (4/4 tasks complete) ✅ 100% DONE - PR #4
+## PR 1: Backend Foundation (4/4 tasks complete) ✅ 100% DONE - PR #4 [REQUIRED FOR MVP]
 
 - [x] **1.1 - Initialize Backend Project** ✅ COMPLETE
   - Create /server directory with Node.js + Express + TypeScript
@@ -76,10 +92,11 @@
 
 ---
 
-## PR 2: Selection Algorithm (0/4 tasks complete) 🔄 READY TO START
+## PR 2: Selection Algorithm (0/4 tasks complete) 🔄 READY TO START [REQUIRED FOR MVP]
 
 **Combines**: Phase 2.1-2.4 (all selection logic in one PR)
 **Parallelizable**: All 4 tasks can be worked on simultaneously by different agents
+**MVP Critical**: Core spaced repetition algorithm - enables daily problem selection
 
 **IMPLEMENTATION STRATEGY - USE AGENTS IN PARALLEL:**
 1. Launch **backend-engineering-expert** for task 2.1 (eligibility queries)
@@ -117,10 +134,11 @@
 
 ---
 
-## PR 3: Frontend Foundation + Dashboard (0/4 tasks complete)
+## PR 3: Frontend Foundation + Dashboard (0/4 tasks complete) [REQUIRED FOR MVP]
 
 **Combines**: Phase 3.1-3.4 (complete frontend setup + first page)
 **Parallelizable**: API client + Hooks can be built while Dashboard is being designed
+**MVP Critical**: User interface to view daily problems and submit completions
 
 - [ ] **3.1 - Initialize Frontend Project**
   - Create /client with React + Vite + TypeScript + Tailwind
@@ -144,10 +162,11 @@
 
 ---
 
-## PR 4: Key Insights + Stats (0/3 tasks complete)
+## PR 4: Key Insights + Stats (0/3 tasks complete) [OPTIONAL ENHANCEMENT]
 
 **Combines**: Phase 4.1 + 5.1-5.2 (insights feature + stats together)
 **Parallelizable**: Backend stats endpoint + Frontend components can be built simultaneously
+**Enhancement**: Adds insights capture and analytics dashboard
 
 - [ ] **4.1 - Key Insight Modal/Editor**
   - Textarea/modal for capturing insights
@@ -165,9 +184,10 @@
 
 ---
 
-## PR 5: All Problems View (0/2 tasks complete)
+## PR 5: All Problems View (0/2 tasks complete) [OPTIONAL ENHANCEMENT]
 
 **Combines**: Phase 6.1-6.2 (table + inline editing together)
+**Enhancement**: Adds sortable/filterable table view for all problems
 
 - [ ] **6.1 - Problems Table Component**
   - Sortable (name, color, last reviewed, attempts)
@@ -181,10 +201,11 @@
 
 ---
 
-## PR 6: Settings & Import/Export (0/3 tasks complete)
+## PR 6: Settings & Import/Export (0/3 tasks complete) [OPTIONAL ENHANCEMENT]
 
 **Combines**: Phase 7.1-7.3 (all settings features together)
 **Parallelizable**: Backend settings API + Frontend modal + Import/Export UI can be built simultaneously
+**Enhancement**: Adds configuration UI and CSV import/export features
 
 - [ ] **7.1 - Settings API**
   - GET/PATCH /api/settings (daily_problem_count, theme)
@@ -202,9 +223,10 @@
 
 ---
 
-## PR 7: Polish & Error Handling (0/1 task complete)
+## PR 7: Polish & Error Handling (0/1 task complete) [OPTIONAL ENHANCEMENT]
 
 **Standalone**: Phase 7.4 (final polish across all components)
+**Enhancement**: UX refinements, error boundaries, responsive design
 
 - [ ] **7.4 - Error Handling & Polish**
   - Error boundaries, toast notifications
@@ -213,9 +235,10 @@
 
 ---
 
-## PR 8: Final Integration & Testing
+## PR 8: Final Integration & Testing [OPTIONAL ENHANCEMENT]
 
 **New**: End-to-end testing and final integration
+**Enhancement**: Comprehensive e2e tests and integration testing
 
 - [ ] **8.1 - Integration Testing**
   - End-to-end user workflows
@@ -270,12 +293,20 @@
 **Current PR**: PR 1 - Backend Foundation (100% complete) - PR #4 pending merge
 **Next PR**: PR 2 - Selection Algorithm (ready to start)
 
+### Path to MVP (2 more PRs)
+
 **Immediate To Do**:
 1. ✅ Merge PR #4 when approved
-2. 🚀 Start PR 2 using **MANDATORY SUBAGENT WORKFLOW**:
+2. 🚀 **PR 2 - Selection Algorithm** using **MANDATORY SUBAGENT WORKFLOW**:
    - Launch backend-engineering-expert agents in parallel for 2.1, 2.2, 2.3
    - Launch typescript-test-specialist for all test files
    - Run ts-code-reviewer before opening PR
+3. 🚀 **PR 3 - Frontend Foundation + Dashboard**:
+   - Launch frontend-ux-engineer for UI design and implementation
+   - Launch typescript-test-specialist for component tests
+   - Run ts-code-reviewer before opening PR
+
+**After MVP**: Consider implementing optional enhancements (PRs 4-8) based on user needs
 
 **🚨 CRITICAL REMINDER: USE SUBAGENTS FROM THE START 🚨**
 - DO NOT implement code manually first
