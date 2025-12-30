@@ -1,6 +1,13 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import type { Server } from 'http';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { initializeDatabase, closeDatabase } from './db/index.js';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Express application instance
@@ -72,8 +79,40 @@ export let server: Server | undefined;
 
 // Start server only when not imported by tests
 if (import.meta.url === `file://${process.argv[1]}`) {
+  // Initialize database on server startup
+  const dbPath = path.join(__dirname, '../data/leetcode.db');
+  initializeDatabase(dbPath);
+  console.log(`Database initialized at ${dbPath}`);
+
   server = app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/health`);
+  });
+
+  // Graceful shutdown: close database connection on process termination
+  process.on('SIGINT', () => {
+    console.log('\nShutting down gracefully...');
+    closeDatabase();
+    if (server) {
+      server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+      });
+    } else {
+      process.exit(0);
+    }
+  });
+
+  process.on('SIGTERM', () => {
+    console.log('\nShutting down gracefully...');
+    closeDatabase();
+    if (server) {
+      server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+      });
+    } else {
+      process.exit(0);
+    }
   });
 }
