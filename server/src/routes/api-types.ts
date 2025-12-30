@@ -2,7 +2,7 @@
  * TypeScript types for API request and response payloads
  */
 
-import { Problem, ProblemColor, Attempt } from '../db/types';
+import { Problem, ProblemColor, Attempt, AttemptColorResult } from '../db/types';
 
 /**
  * Request body for creating a single problem
@@ -47,4 +47,26 @@ export interface ImportResult {
   imported: number;
   duplicates: number;
   errors: Array<{ row: number; error: string }>;
+}
+
+/**
+ * Problem with daily selection metadata
+ */
+export interface ProblemWithSelection extends Problem {
+  selectionId: number;
+  completed: boolean;
+}
+
+/**
+ * Response for daily selection endpoints
+ */
+export interface DailySelectionResponse {
+  problems: ProblemWithSelection[];
+}
+
+/**
+ * Request body for completing a problem
+ */
+export interface CompleteProblemRequest {
+  color: AttemptColorResult;
 }
