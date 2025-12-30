@@ -1,0 +1,5 @@
+# Business logic services will go here
+
+## Planned services (from PLAN.md):
+- selection.ts - Spaced repetition algorithm for daily problem selection
+- csv-parser.ts - Parse and import LeetCode problem data from CSV

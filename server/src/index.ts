@@ -1,0 +1,79 @@
+import express, { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
+import type { Server } from 'http';
+
+/**
+ * Express application instance
+ * Configured with JSON parsing and CORS middleware
+ */
+export const app = express();
+
+// Get port from environment or use default
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+/**
+ * Middleware Configuration
+ */
+
+// Enable CORS for all routes
+app.use(cors());
+
+// Parse JSON request bodies
+app.use(express.json());
+
+/**
+ * Route Handlers
+ */
+
+/**
+ * Health check endpoint
+ * Returns server status and current timestamp
+ *
+ * @route GET /health
+ * @returns {object} 200 - Server status and ISO timestamp
+ */
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+/**
+ * 404 handler for unknown routes
+ * Must be defined after all other routes
+ */
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({
+    error: 'Not Found',
+    message: 'The requested resource does not exist',
+  });
+});
+
+/**
+ * Global error handler
+ * Catches any errors thrown in route handlers
+ */
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Server error:', err);
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'production'
+      ? 'An unexpected error occurred'
+      : err.message,
+  });
+});
+
+/**
+ * Server instance
+ * Only start server if this file is executed directly (not imported for testing)
+ */
+export let server: Server | undefined;
+
+// Start server only when not imported by tests
+if (import.meta.url === `file://${process.argv[1]}`) {
+  server = app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/health`);
+  });
+}

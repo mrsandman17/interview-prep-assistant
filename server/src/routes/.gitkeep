@@ -1,0 +1,7 @@
+# Express route handlers will go here
+
+## Planned routes (from PLAN.md):
+- problems.ts - CRUD operations for problems
+- daily.ts - Daily problem selection
+- stats.ts - Statistics and progress tracking
+- settings.ts - User settings and preferences
