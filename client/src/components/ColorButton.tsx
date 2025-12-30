@@ -25,6 +25,7 @@ const colorLabels: Record<Exclude<ProblemColor, 'gray'>, string> = {
 export function ColorButton({ color, onClick, disabled = false }: ColorButtonProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       className={`

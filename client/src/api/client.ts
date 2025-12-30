@@ -36,7 +36,7 @@ async function fetchJSON<T>(
     const error: ApiError = await response.json().catch(() => ({
       error: `HTTP ${response.status}: ${response.statusText}`,
     }));
-    throw new Error(error.error);
+    throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`);
   }
 
   return response.json();
