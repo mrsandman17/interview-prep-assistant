@@ -63,8 +63,16 @@ git worktree remove ../interview-prep-assistant-feature-name
 1. Start session: Create new worktree with descriptive branch name
 2. Work in isolated directory
 3. Commit changes regularly
-4. Push branch and create PR when ready
-5. Clean up: Remove worktree after merging
+4. **Before opening PR:**
+   - Run all tests and ensure they pass: `npm test`
+   - Run code reviewer agent to review changes
+   - Fix any issues identified by tests or code review
+5. Push branch and create PR when ready
+6. **After PR is merged in GitHub:**
+   - Delete the remote branch: `git push origin --delete feature/branch-name`
+   - Navigate back to main repo: `cd ../interview-prep-assistant`
+   - Remove the worktree: `git worktree remove ../interview-prep-assistant-feature-name`
+   - Delete the local branch: `git branch -d feature/branch-name`
 
 ## Development Workflow
 
