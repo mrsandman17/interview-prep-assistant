@@ -1,0 +1,6 @@
+# Database setup and schema files will go here
+
+## Planned files:
+- schema.sql - SQLite database schema
+- connection.ts - Database connection setup and initialization
+- migrations/ - Database migration scripts (if needed)
