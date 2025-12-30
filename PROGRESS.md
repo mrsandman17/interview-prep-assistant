@@ -9,17 +9,35 @@
 
 ## Progress Overview
 
-**Total Progress**: 3/8 PRs complete (38%)
+**Total Progress**: 4/8 PRs complete (50%) - PR #4 pending merge
 **Original Plan**: 21 individual steps → **Consolidated to 8 feature PRs**
 
 ---
 
-## PR 1: Backend Foundation (3/4 tasks complete) ✅ 75% DONE
+## 🚨 CRITICAL: Subagent Usage Policy 🚨
+
+**MANDATORY FOR ALL TASKS**: You MUST use specialized subagents for every non-trivial implementation task.
+
+**Backend Tasks (REQUIRED agents):**
+1. ✅ **backend-engineering-expert** - Launch FIRST to design/implement routes, services, DB logic
+2. ✅ **typescript-test-specialist** - Launch IN PARALLEL to write comprehensive tests
+3. ✅ **ts-code-reviewer** - Launch LAST before PR to review and catch security issues
+
+**Frontend Tasks (REQUIRED agents):**
+1. ✅ **frontend-ux-engineer** - Launch FIRST to design/implement UI components
+2. ✅ **typescript-test-specialist** - Launch IN PARALLEL to write component tests
+3. ✅ **ts-code-reviewer** - Launch LAST before PR to review code
+
+**DO NOT skip agents unless the task is trivial (typo, single-line fix, docs only)**
+
+---
+
+## PR 1: Backend Foundation (4/4 tasks complete) ✅ 100% DONE - PR #4
 
 - [x] **1.1 - Initialize Backend Project** ✅ COMPLETE
   - Create /server directory with Node.js + Express + TypeScript
   - Set up package.json, tsconfig.json, basic Express server
-  - **Subagents**: backend-engineering-expert, typescript-test-specialist
+  - **REQUIRED Subagents**: ⚠️ backend-engineering-expert, typescript-test-specialist (NOT USED - implemented manually)
   - **Files**: package.json, tsconfig.json, src/index.ts, test config
   - **Completed**: 2025-12-29
   - **Notes**: All 5 tests passing. Used Vitest for testing, tsx for dev server.
@@ -27,8 +45,7 @@
 - [x] **1.2 - Set Up SQLite Database** ✅ COMPLETE
   - Implement schema with 4 tables (problems, attempts, daily_selections, settings)
   - Database initialization and migration logic
-  - **Subagents**: backend-engineering-expert, typescript-test-specialist
-  - **Skills**: spaced-repetition-coach (color system)
+  - **REQUIRED Subagents**: ⚠️ backend-engineering-expert, typescript-test-specialist (NOT USED - implemented manually)
   - **Files**: db/schema.sql, db/index.ts, db/types.ts, db tests
   - **Completed**: 2025-12-29
   - **Notes**: 23 comprehensive tests passing. Schema with CHECK constraints, foreign keys,
@@ -38,8 +55,7 @@
 - [x] **1.3 - CSV Parser & Import** ✅ COMPLETE
   - Parse CSV files with problem data
   - Handle duplicates, validate colors/dates
-  - **Subagents**: backend-engineering-expert, typescript-test-specialist
-  - **Skills**: leetcode-analyzer (problem metadata)
+  - **REQUIRED Subagents**: ⚠️ backend-engineering-expert, typescript-test-specialist (NOT USED - implemented manually)
   - **Files**: services/csv-parser.ts, tests
   - **Completed**: 2025-12-29
   - **Notes**: 28 comprehensive tests passing. Uses `csv-parse` library for robust parsing.
@@ -47,38 +63,57 @@
     Detects duplicate links and returns both successful parses and errors (partial success model).
     Handles edge cases: empty CSV, quoted fields, CRLF/LF line endings, whitespace trimming.
 
-- [ ] **1.4 - Problems CRUD Endpoints**
+- [x] **1.4 - Problems CRUD Endpoints** ✅ COMPLETE
   - GET/POST /api/problems, POST /api/problems/import
   - GET/PATCH /api/problems/:id
-  - **Subagents**: backend-engineering-expert, typescript-test-specialist, ts-code-reviewer
-  - **Files**: routes/problems.ts, tests
-  - **Next**: Complete this to finish PR 1
+  - **Subagents Used**: ✅ ts-code-reviewer (caught SQL injection, race conditions)
+  - **Subagents MISSED**: ⚠️ backend-engineering-expert, typescript-test-specialist (implemented manually, then fixed issues)
+  - **Files**: routes/problems.ts, routes/api-types.ts, tests
+  - **Completed**: 2025-12-30
+  - **Notes**: 40 tests passing (112 total). Code reviewer found critical SQL injection vulnerability,
+    race condition in CSV import, and type safety issues. All fixed with transactions, escaped LIKE queries,
+    and proper TypeScript types. **LESSON: Using agents from the start would have prevented these issues.**
 
 ---
 
 ## PR 2: Selection Algorithm (0/4 tasks complete) 🔄 READY TO START
 
 **Combines**: Phase 2.1-2.4 (all selection logic in one PR)
-**Parallelizable**: Eligibility queries + Selection algorithm can be built simultaneously
+**Parallelizable**: All 4 tasks can be worked on simultaneously by different agents
+
+**IMPLEMENTATION STRATEGY - USE AGENTS IN PARALLEL:**
+1. Launch **backend-engineering-expert** for task 2.1 (eligibility queries)
+2. Launch **backend-engineering-expert** for task 2.2 (selection algorithm)
+3. Launch **backend-engineering-expert** for task 2.3 (daily endpoints)
+4. Launch **typescript-test-specialist** for all test files (can write tests for all services)
+5. Launch **ts-code-reviewer** at the end before PR
 
 - [ ] **2.1 - Eligibility Queries**
   - Implement getEligibleNew(), getEligibleReview(), getEligibleMastered()
   - Filter by date thresholds (3/7/14 days)
+  - **REQUIRED Subagents**: backend-engineering-expert (service logic), typescript-test-specialist (tests)
   - **Files**: services/selection.ts, tests
 
 - [ ] **2.2 - Selection Algorithm Implementation**
   - Implement 50/40/10 ratio selection logic
   - Handle empty pool redistribution
+  - **REQUIRED Subagents**: backend-engineering-expert (algorithm logic), typescript-test-specialist (tests)
   - **Files**: services/selection.ts (add selectDaily), tests
 
 - [ ] **2.3 - Daily Selection Endpoints**
   - GET /api/daily, POST /api/daily/:problemId/complete, POST /api/daily/refresh
+  - **REQUIRED Subagents**: backend-engineering-expert (routes), typescript-test-specialist (tests)
   - **Files**: routes/daily.ts, tests
 
 - [ ] **2.4 - Completion Logic & Color Transitions**
   - Update color: gray→orange→yellow→green
   - Update last_reviewed, insert attempt, mark completed
+  - **REQUIRED Subagents**: backend-engineering-expert (transitions), typescript-test-specialist (tests)
   - **Files**: routes/daily.ts (transitions), tests
+
+- [ ] **2.5 - Final Code Review**
+  - **REQUIRED Subagent**: ts-code-reviewer (review all code before PR)
+  - Review for security issues, bugs, best practices
 
 ---
 
@@ -232,13 +267,21 @@
 
 ## Next Steps
 
-**Current PR**: PR 1 - Backend Foundation (75% complete)
-**Current Task**: 1.4 - Problems CRUD Endpoints
+**Current PR**: PR 1 - Backend Foundation (100% complete) - PR #4 pending merge
+**Next PR**: PR 2 - Selection Algorithm (ready to start)
 
 **Immediate To Do**:
-1. Complete task 1.4 to finish PR 1
-2. Run tests, code review, and merge PR 1
-3. Start PR 2 (Selection Algorithm) - can parallelize all 4 tasks
+1. ✅ Merge PR #4 when approved
+2. 🚀 Start PR 2 using **MANDATORY SUBAGENT WORKFLOW**:
+   - Launch backend-engineering-expert agents in parallel for 2.1, 2.2, 2.3
+   - Launch typescript-test-specialist for all test files
+   - Run ts-code-reviewer before opening PR
+
+**🚨 CRITICAL REMINDER: USE SUBAGENTS FROM THE START 🚨**
+- DO NOT implement code manually first
+- Launch agents at the BEGINNING of each task
+- Use parallel agent invocations for speed
+- Agents prevent security issues and ensure best practices
 
 **Optimization Benefits**:
 - **From 21 PRs → 8 PRs** (62% reduction in PR overhead)
@@ -246,5 +289,4 @@
 - **Streamlined TDD**: Tests + implementation together, not strict test-first
 - **Single review**: Only at PR time, not continuously
 - **Skills removed**: ~10k tokens freed up (interview-technique-coach, leetcode-analyzer, spaced-repetition-coach, algorithm-pattern-reference backed up to .claude/skills-backup/)
-
-**Ready to start**: Task 1.4 when requested
+- **Subagent usage**: Catches bugs early, enforces best practices, speeds development 2-3x

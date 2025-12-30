@@ -76,12 +76,41 @@ git worktree remove ../interview-prep-assistant-feature-name
 
 ## Development Workflow
 
+**CRITICAL: MANDATORY Subagent Usage**
+
+🚨 **YOU MUST USE SUBAGENTS FOR ALL NON-TRIVIAL WORK** 🚨
+
+For every implementation task, you MUST use specialized subagents in parallel:
+
+**Backend Implementation (REQUIRED):**
+1. **backend-engineering-expert** - Design and implement API routes, services, database logic
+2. **typescript-test-specialist** - Write comprehensive tests (TDD approach)
+3. **ts-code-reviewer** - Review code before opening PR (catches security issues, bugs)
+
+**Frontend Implementation (REQUIRED):**
+1. **frontend-ux-engineer** - Design and implement UI components, pages, UX flows
+2. **typescript-test-specialist** - Write component tests and integration tests
+3. **ts-code-reviewer** - Review code before opening PR
+
+**When to Use Each Agent:**
+- Launch agents **at the START** of implementation, not after writing code yourself
+- Use **Task tool with parallel invocations** when multiple agents can work simultaneously
+- Example: Launch backend-engineering-expert AND typescript-test-specialist in parallel
+- ONLY skip agents for trivial changes (typos, single-line fixes, documentation)
+
+**Why This Matters:**
+- Agents catch security vulnerabilities (SQL injection, race conditions)
+- Agents enforce best practices and proper architecture
+- Agents write better tests with comprehensive coverage
+- Parallelization speeds up development by 2-3x
+
 **Test-Driven Development (Streamlined)**
 
 Write tests alongside implementation in quick iterations:
-1. **Write test + implementation together** - Develop tests and code in parallel
-2. **Run tests frequently** - Verify all tests pass at feature completion
-3. **Refactor as needed** - Improve code while keeping tests green
+1. **Use typescript-test-specialist agent** - Let the agent write tests first or in parallel
+2. **Use backend/frontend agents** - Let them implement following the test patterns
+3. **Run tests frequently** - Verify all tests pass at feature completion
+4. **Use ts-code-reviewer** - Review before committing
 
 Never implement features or fix bugs without corresponding tests.
 
