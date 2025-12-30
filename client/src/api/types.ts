@@ -1,0 +1,72 @@
+/**
+ * TypeScript interfaces matching backend API types
+ */
+
+export type ProblemColor = 'gray' | 'orange' | 'yellow' | 'green';
+
+export interface Problem {
+  id: number;
+  name: string;
+  link: string;
+  color: ProblemColor;
+  keyInsight: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DailyProblem extends Problem {
+  selectionId: number;
+  completed: boolean;
+}
+
+export interface DailySelection {
+  problems: DailyProblem[];
+}
+
+export interface CompleteProblemRequest {
+  colorResult: Exclude<ProblemColor, 'gray'>;
+}
+
+export interface CompleteProblemResponse {
+  problem: DailyProblem;
+}
+
+export interface Stats {
+  totalProblems: number;
+  greenProblems: number;
+  currentStreak: number;
+  readyForReview: number;
+}
+
+export interface Settings {
+  dailyProblemCount: number;
+}
+
+export interface UpdateSettingsRequest {
+  dailyProblemCount: number;
+}
+
+export interface CreateProblemRequest {
+  name: string;
+  link: string;
+  keyInsight?: string;
+}
+
+export interface UpdateProblemRequest {
+  name?: string;
+  link?: string;
+  keyInsight?: string;
+}
+
+export interface ImportProblemsRequest {
+  csvContent: string;
+}
+
+export interface ImportProblemsResponse {
+  imported: number;
+  skipped: number;
+}
+
+export interface ApiError {
+  error: string;
+}
