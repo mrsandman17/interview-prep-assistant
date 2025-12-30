@@ -4,6 +4,7 @@ import type { Server } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initializeDatabase, closeDatabase } from './db/index.js';
+import { problemsRouter } from './routes/problems.js';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -28,6 +29,9 @@ app.use(cors());
 // Parse JSON request bodies
 app.use(express.json());
 
+// Parse text/csv and text/plain as strings for CSV import
+app.use(express.text({ type: ['text/csv', 'text/plain'] }));
+
 /**
  * Route Handlers
  */
@@ -45,6 +49,11 @@ app.get('/health', (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+/**
+ * API Routes
+ */
+app.use('/api/problems', problemsRouter);
 
 /**
  * 404 handler for unknown routes
