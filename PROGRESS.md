@@ -1,18 +1,20 @@
 # LeetCode Daily Selector - Implementation Progress
 
 **Status**: In Progress
-**Last Updated**: 2025-12-29
+**Last Updated**: 2025-12-30
 **Project**: Interview Prep Assistant
+**Workflow**: Streamlined TDD, parallelized where possible, consolidated PRs
 
 ---
 
 ## Progress Overview
 
-**Total Progress**: 3/21 steps complete (14%)
+**Total Progress**: 3/8 PRs complete (38%)
+**Original Plan**: 21 individual steps → **Consolidated to 8 feature PRs**
 
 ---
 
-## Phase 1: Backend Foundation (3/4 complete)
+## PR 1: Backend Foundation (3/4 tasks complete) ✅ 75% DONE
 
 - [x] **1.1 - Initialize Backend Project** ✅ COMPLETE
   - Create /server directory with Node.js + Express + TypeScript
@@ -50,146 +52,150 @@
   - GET/PATCH /api/problems/:id
   - **Subagents**: backend-engineering-expert, typescript-test-specialist, ts-code-reviewer
   - **Files**: routes/problems.ts, tests
+  - **Next**: Complete this to finish PR 1
 
 ---
 
-## Phase 2: Selection Algorithm (0/4 complete)
+## PR 2: Selection Algorithm (0/4 tasks complete) 🔄 READY TO START
+
+**Combines**: Phase 2.1-2.4 (all selection logic in one PR)
+**Parallelizable**: Eligibility queries + Selection algorithm can be built simultaneously
 
 - [ ] **2.1 - Eligibility Queries**
   - Implement getEligibleNew(), getEligibleReview(), getEligibleMastered()
   - Filter by date thresholds (3/7/14 days)
-  - **Subagents**: backend-engineering-expert, typescript-test-specialist
-  - **Skills**: spaced-repetition-coach (thresholds)
   - **Files**: services/selection.ts, tests
 
 - [ ] **2.2 - Selection Algorithm Implementation**
   - Implement 50/40/10 ratio selection logic
   - Handle empty pool redistribution
-  - **Subagents**: backend-engineering-expert, typescript-test-specialist
-  - **Skills**: spaced-repetition-coach (ratios)
   - **Files**: services/selection.ts (add selectDaily), tests
 
 - [ ] **2.3 - Daily Selection Endpoints**
-  - GET /api/daily, POST /api/daily/:problemId/complete
-  - POST /api/daily/refresh
-  - **Subagents**: backend-engineering-expert, typescript-test-specialist, ts-code-reviewer
+  - GET /api/daily, POST /api/daily/:problemId/complete, POST /api/daily/refresh
   - **Files**: routes/daily.ts, tests
 
 - [ ] **2.4 - Completion Logic & Color Transitions**
   - Update color: gray→orange→yellow→green
   - Update last_reviewed, insert attempt, mark completed
-  - **Subagents**: backend-engineering-expert, typescript-test-specialist
-  - **Skills**: spaced-repetition-coach (progression)
   - **Files**: routes/daily.ts (transitions), tests
 
 ---
 
-## Phase 3: Frontend Foundation (0/4 complete)
+## PR 3: Frontend Foundation + Dashboard (0/4 tasks complete)
+
+**Combines**: Phase 3.1-3.4 (complete frontend setup + first page)
+**Parallelizable**: API client + Hooks can be built while Dashboard is being designed
 
 - [ ] **3.1 - Initialize Frontend Project**
   - Create /client with React + Vite + TypeScript + Tailwind
   - Configure Tailwind, Vite, proxy to backend
-  - **Subagents**: frontend-ux-engineer, typescript-test-specialist
   - **Files**: package.json, tsconfig.json, vite.config.ts, tailwind.config.js, main.tsx, App.tsx
 
 - [ ] **3.2 - API Client**
   - Typed fetch wrappers for all endpoints
   - Error handling, TypeScript interfaces
-  - **Subagents**: frontend-ux-engineer, typescript-test-specialist
   - **Files**: api/client.ts, api/types.ts, tests
 
 - [ ] **3.3 - Custom Hooks**
   - useProblems(), useDaily(), useStats()
   - Loading/error states
-  - **Subagents**: frontend-ux-engineer, typescript-test-specialist
   - **Files**: hooks/useProblems.ts, hooks/useDaily.ts, hooks/useStats.ts, tests
 
 - [ ] **3.4 - Dashboard Page & Problem Cards**
   - Main daily practice view
-  - ProblemCard with pending/completed states
-  - Color button selection
-  - **Subagents**: frontend-ux-engineer, typescript-test-specialist, ts-code-reviewer
-  - **Skills**: interview-technique-coach (UX)
+  - ProblemCard with pending/completed states, color button selection
   - **Files**: pages/Dashboard.tsx, components/ProblemCard.tsx, components/ColorButton.tsx, tests
 
 ---
 
-## Phase 4: Key Insight Feature (0/1 complete)
+## PR 4: Key Insights + Stats (0/3 tasks complete)
+
+**Combines**: Phase 4.1 + 5.1-5.2 (insights feature + stats together)
+**Parallelizable**: Backend stats endpoint + Frontend components can be built simultaneously
 
 - [ ] **4.1 - Key Insight Modal/Editor**
   - Textarea/modal for capturing insights
   - Show after color selection, pre-fill if exists
-  - **Subagents**: frontend-ux-engineer, typescript-test-specialist
-  - **Skills**: leetcode-analyzer (insight suggestions)
   - **Files**: components/KeyInsightModal.tsx, tests
-
----
-
-## Phase 5: Stats & Progress (0/2 complete)
 
 - [ ] **5.1 - Stats API Endpoint**
   - GET /api/stats with color distribution, ready for review, streak, progress
-  - **Subagents**: backend-engineering-expert, typescript-test-specialist
   - **Files**: routes/stats.ts, tests
 
 - [ ] **5.2 - Stats Dashboard**
   - Charts (color distribution, progress over time)
   - Metrics (streak, ready for review)
-  - **Subagents**: frontend-ux-engineer, typescript-test-specialist
   - **Files**: pages/Stats.tsx, components/StatsCard.tsx, components/ProgressChart.tsx, tests
 
 ---
 
-## Phase 6: All Problems View (0/2 complete)
+## PR 5: All Problems View (0/2 tasks complete)
+
+**Combines**: Phase 6.1-6.2 (table + inline editing together)
 
 - [ ] **6.1 - Problems Table Component**
   - Sortable (name, color, last reviewed, attempts)
   - Filterable (by color), searchable (by name)
-  - **Subagents**: frontend-ux-engineer, typescript-test-specialist
   - **Files**: pages/AllProblems.tsx, components/ProblemsTable.tsx, tests
 
 - [ ] **6.2 - Inline Editing**
   - Edit color dropdown, key insight textarea in table
   - Save on blur, loading states
-  - **Subagents**: frontend-ux-engineer, typescript-test-specialist
   - **Files**: components/ProblemsTable.tsx (add editing), tests
 
 ---
 
-## Phase 7: Settings & Polish (0/4 complete)
+## PR 6: Settings & Import/Export (0/3 tasks complete)
+
+**Combines**: Phase 7.1-7.3 (all settings features together)
+**Parallelizable**: Backend settings API + Frontend modal + Import/Export UI can be built simultaneously
 
 - [ ] **7.1 - Settings API**
   - GET/PATCH /api/settings (daily_problem_count, theme)
-  - **Subagents**: backend-engineering-expert, typescript-test-specialist
   - **Files**: routes/settings.ts, tests
 
 - [ ] **7.2 - Settings Modal**
   - Daily problem count slider (3-5)
   - Theme toggle (light/dark), Tailwind dark mode
-  - **Subagents**: frontend-ux-engineer, typescript-test-specialist
   - **Files**: components/SettingsModal.tsx, tests
 
 - [ ] **7.3 - Import/Export Features**
   - ImportModal with file upload
   - CSV export functionality
-  - **Subagents**: frontend-ux-engineer, typescript-test-specialist
   - **Files**: components/ImportModal.tsx, components/AddProblemForm.tsx, tests
+
+---
+
+## PR 7: Polish & Error Handling (0/1 task complete)
+
+**Standalone**: Phase 7.4 (final polish across all components)
 
 - [ ] **7.4 - Error Handling & Polish**
   - Error boundaries, toast notifications
   - Loading skeletons, responsive design, accessibility
-  - **Subagents**: frontend-ux-engineer, ts-code-reviewer, typescript-test-specialist
   - **Files**: All components (refinements)
 
 ---
 
-## Code Review Checkpoints (0/5 complete)
+## PR 8: Final Integration & Testing
 
-- [ ] **Review 1** - After Phase 1 (Backend Foundation)
-- [ ] **Review 2** - After Phase 2 (Selection Algorithm)
-- [ ] **Review 3** - After Phase 3 (Frontend Foundation)
-- [ ] **Review 4** - After Phase 5 (Stats Implementation)
-- [ ] **Review 5** - Final Review (Before Deployment)
+**New**: End-to-end testing and final integration
+
+- [ ] **8.1 - Integration Testing**
+  - End-to-end user workflows
+  - Cross-component interactions
+  - Performance testing
+  - **Files**: e2e tests, integration tests
+
+---
+
+## Code Review Strategy
+
+**Single Review Point**: Code review happens once per PR before merge (not continuously)
+- Review after tests pass
+- Fix issues identified
+- Merge when approved
 
 ---
 
@@ -226,14 +232,19 @@
 
 ## Next Steps
 
-**Current Step**: 1.4 - Problems CRUD Endpoints
+**Current PR**: PR 1 - Backend Foundation (75% complete)
+**Current Task**: 1.4 - Problems CRUD Endpoints
 
-**To Do**:
-1. Implement GET /api/problems (list all with filters)
-2. Implement POST /api/problems (add single problem)
-3. Implement POST /api/problems/import (use CSV parser)
-4. Implement GET /api/problems/:id (single problem with attempts)
-5. Implement PATCH /api/problems/:id (update problem)
-6. Write comprehensive tests (TDD)
+**Immediate To Do**:
+1. Complete task 1.4 to finish PR 1
+2. Run tests, code review, and merge PR 1
+3. Start PR 2 (Selection Algorithm) - can parallelize all 4 tasks
 
-**Ready to start**: Phase 1.4 when requested
+**Optimization Benefits**:
+- **From 21 PRs → 8 PRs** (62% reduction in PR overhead)
+- **Parallelization**: Multiple tasks within each PR can be built simultaneously
+- **Streamlined TDD**: Tests + implementation together, not strict test-first
+- **Single review**: Only at PR time, not continuously
+- **Skills removed**: ~10k tokens freed up (interview-technique-coach, leetcode-analyzer, spaced-repetition-coach, algorithm-pattern-reference backed up to .claude/skills-backup/)
+
+**Ready to start**: Task 1.4 when requested

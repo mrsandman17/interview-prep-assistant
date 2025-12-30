@@ -65,8 +65,8 @@ git worktree remove ../interview-prep-assistant-feature-name
 3. Commit changes regularly
 4. **Before opening PR:**
    - Run all tests and ensure they pass: `npm test`
-   - Run code reviewer agent to review changes
-   - Fix any issues identified by tests or code review
+   - Run code reviewer agent to review changes (single review at PR time)
+   - Fix any issues identified
 5. Push branch and create PR when ready
 6. **After PR is merged in GitHub:**
    - Delete the remote branch: `git push origin --delete feature/branch-name`
@@ -76,16 +76,16 @@ git worktree remove ../interview-prep-assistant-feature-name
 
 ## Development Workflow
 
-**Test-Driven Development (TDD) is mandatory**
+**Test-Driven Development (Streamlined)**
 
-Always follow this sequence:
-1. **Write tests first** - Create failing tests that define the expected behavior
-2. **Run tests** - Verify they fail for the right reasons
-3. **Implement code** - Write minimal code to make tests pass
-4. **Run tests again** - Verify all tests pass
-5. **Refactor** - Improve code while keeping tests green
+Write tests alongside implementation in quick iterations:
+1. **Write test + implementation together** - Develop tests and code in parallel
+2. **Run tests frequently** - Verify all tests pass at feature completion
+3. **Refactor as needed** - Improve code while keeping tests green
 
 Never implement features or fix bugs without corresponding tests.
+
+**Parallelization**: Build multiple independent modules/endpoints simultaneously when possible to maximize efficiency.
 
 ## Architecture
 
