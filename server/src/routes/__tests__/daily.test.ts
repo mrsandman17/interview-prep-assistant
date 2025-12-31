@@ -219,10 +219,10 @@ describe('POST /api/daily/:problemId/complete', () => {
 
     const response = await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'orange' });
+      .send({ colorResult: 'orange' });
 
     expect(response.status).toBe(200);
-    expect(response.body.color).toBe('orange');
+    expect(response.body.problem.color).toBe('orange');
 
     // Verify in database
     const problem = db
@@ -238,10 +238,10 @@ describe('POST /api/daily/:problemId/complete', () => {
 
     const response = await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'yellow' });
+      .send({ colorResult: 'yellow' });
 
     expect(response.status).toBe(200);
-    expect(response.body.color).toBe('yellow');
+    expect(response.body.problem.color).toBe('yellow');
 
     const problem = db
       .prepare('SELECT * FROM problems WHERE id = ?')
@@ -256,10 +256,10 @@ describe('POST /api/daily/:problemId/complete', () => {
 
     const response = await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'green' });
+      .send({ colorResult: 'green' });
 
     expect(response.status).toBe(200);
-    expect(response.body.color).toBe('green');
+    expect(response.body.problem.color).toBe('green');
 
     const problem = db
       .prepare('SELECT * FROM problems WHERE id = ?')
@@ -274,10 +274,10 @@ describe('POST /api/daily/:problemId/complete', () => {
 
     const response = await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'green' });
+      .send({ colorResult: 'green' });
 
     expect(response.status).toBe(200);
-    expect(response.body.color).toBe('green');
+    expect(response.body.problem.color).toBe('green');
 
     const problem = db
       .prepare('SELECT * FROM problems WHERE id = ?')
@@ -292,10 +292,10 @@ describe('POST /api/daily/:problemId/complete', () => {
 
     const response = await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'orange' });
+      .send({ colorResult: 'orange' });
 
     expect(response.status).toBe(200);
-    expect(response.body.color).toBe('orange');
+    expect(response.body.problem.color).toBe('orange');
   });
 
   it('should update last_reviewed to today', async () => {
@@ -305,7 +305,7 @@ describe('POST /api/daily/:problemId/complete', () => {
 
     await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'orange' });
+      .send({ colorResult: 'orange' });
 
     const problem = db
       .prepare('SELECT * FROM problems WHERE id = ?')
@@ -320,7 +320,7 @@ describe('POST /api/daily/:problemId/complete', () => {
 
     await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'orange' });
+      .send({ colorResult: 'orange' });
 
     const attempts = db
       .prepare('SELECT * FROM attempts WHERE problem_id = ?')
@@ -343,7 +343,7 @@ describe('POST /api/daily/:problemId/complete', () => {
 
     await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'orange' });
+      .send({ colorResult: 'orange' });
 
     const selection = db
       .prepare(
@@ -361,7 +361,7 @@ describe('POST /api/daily/:problemId/complete', () => {
     // No daily selection exists - should return 400
     const response = await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'orange' });
+      .send({ colorResult: 'orange' });
 
     expect(response.status).toBe(400);
     expect(response.body.message).toContain('not in today\'s selection');
@@ -373,7 +373,7 @@ describe('POST /api/daily/:problemId/complete', () => {
 
     const response = await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'gray' });
+      .send({ colorResult: 'gray' });
 
     expect(response.status).toBe(400);
     expect(response.body.message).toContain('Color');
@@ -385,7 +385,7 @@ describe('POST /api/daily/:problemId/complete', () => {
 
     const response = await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'invalid' });
+      .send({ colorResult: 'invalid' });
 
     expect(response.status).toBe(400);
     expect(response.body.message).toContain('Color');
@@ -394,7 +394,7 @@ describe('POST /api/daily/:problemId/complete', () => {
   it('should return 404 for non-existent problem', async () => {
     const response = await request(app)
       .post('/api/daily/9999/complete')
-      .send({ color: 'orange' });
+      .send({ colorResult: 'orange' });
 
     expect(response.status).toBe(404);
     expect(response.body.message).toContain('not found');
@@ -403,7 +403,7 @@ describe('POST /api/daily/:problemId/complete', () => {
   it('should return 400 for invalid problem ID format', async () => {
     const response = await request(app)
       .post('/api/daily/invalid/complete')
-      .send({ color: 'orange' });
+      .send({ colorResult: 'orange' });
 
     expect(response.status).toBe(400);
     expect(response.body.message).toContain('must be a number');
@@ -439,7 +439,7 @@ describe('POST /api/daily/:problemId/complete', () => {
     // Make a request with invalid color (should rollback)
     await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'invalid' });
+      .send({ colorResult: 'invalid' });
 
     // Verify nothing changed
     const finalProblem = db
@@ -462,7 +462,7 @@ describe('POST /api/daily/:problemId/complete', () => {
     // First completion
     await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'orange' });
+      .send({ colorResult: 'orange' });
 
     // Manually update last_reviewed to yesterday to simulate next day
     db.prepare('UPDATE problems SET last_reviewed = ?, color = ? WHERE id = ?').run(
@@ -478,7 +478,7 @@ describe('POST /api/daily/:problemId/complete', () => {
     // Second completion
     await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'yellow' });
+      .send({ colorResult: 'yellow' });
 
     const attempts = db
       .prepare('SELECT * FROM attempts WHERE problem_id = ? ORDER BY attempted_at')
@@ -501,10 +501,10 @@ describe('POST /api/daily/:problemId/complete', () => {
 
     const response = await request(app)
       .post(`/api/daily/${id}/complete`)
-      .send({ color: 'orange' });
+      .send({ colorResult: 'orange' });
 
     expect(response.status).toBe(200);
-    expect(response.body).toMatchObject({
+    expect(response.body.problem).toMatchObject({
       id,
       name: 'Two Sum',
       color: 'orange',

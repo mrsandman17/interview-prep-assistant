@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { initializeDatabase, closeDatabase } from './db/index.js';
 import { problemsRouter } from './routes/problems.js';
 import { dailyRouter } from './routes/daily.js';
+import { statsRouter } from './routes/stats.js';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -56,6 +57,7 @@ app.get('/health', (_req: Request, res: Response) => {
  */
 app.use('/api/problems', problemsRouter);
 app.use('/api/daily', dailyRouter);
+app.use('/api/stats', statsRouter);
 
 /**
  * 404 handler for unknown routes

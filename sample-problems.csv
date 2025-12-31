@@ -1,0 +1,11 @@
+Problem,Link,Color,LastReviewed,KeyInsight
+Two Sum,https://leetcode.com/problems/two-sum/,gray,,Use hash map for O(n) lookup
+3Sum,https://leetcode.com/problems/3sum/,gray,,Sort array then use two pointers
+Valid Parentheses,https://leetcode.com/problems/valid-parentheses/,gray,,Stack-based matching
+Best Time to Buy and Sell Stock,https://leetcode.com/problems/best-time-to-buy-and-sell-stock/,gray,,Track minimum price seen so far
+Maximum Subarray,https://leetcode.com/problems/maximum-subarray/,gray,,Kadane's algorithm - dynamic programming
+Merge Two Sorted Lists,https://leetcode.com/problems/merge-two-sorted-lists/,gray,,Use dummy head node for cleaner code
+Container With Most Water,https://leetcode.com/problems/container-with-most-water/,gray,,Two pointers from both ends
+Longest Substring Without Repeating Characters,https://leetcode.com/problems/longest-substring-without-repeating-characters/,gray,,Sliding window with hash set
+Reverse Linked List,https://leetcode.com/problems/reverse-linked-list/,gray,,Iterative: track prev/curr/next pointers
+Binary Tree Inorder Traversal,https://leetcode.com/problems/binary-tree-inorder-traversal/,gray,,Left-Root-Right pattern with stack

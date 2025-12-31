@@ -255,6 +255,8 @@ problemsRouter.post('/import', (req: Request, res: Response) => {
 
     if (typeof req.body === 'string') {
       csvContent = req.body;
+    } else if (req.body && typeof req.body.csvContent === 'string') {
+      csvContent = req.body.csvContent;
     } else if (req.body && typeof req.body.csv === 'string') {
       csvContent = req.body.csv;
     } else {
