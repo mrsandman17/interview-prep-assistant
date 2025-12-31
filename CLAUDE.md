@@ -145,3 +145,95 @@ Never implement features or fix bugs without corresponding tests.
 - `POST /api/daily/:problemId/complete` - Mark complete with color result
 - `GET /api/stats` - Dashboard statistics
 - `GET/PATCH /api/settings` - User preferences
+
+### Low Level Design & Coding Standards
+
+**Core Principle**: Write self-documenting, testable, maintainable code. Use classes for stateful logic, interfaces for contracts, and dependency injection throughout.
+
+#### Architecture Pattern
+
+**Three-Layer Architecture (Backend)**
+```
+Routes (HTTP layer) → Services (Business logic) → Repositories (Data access)
+```
+- **Routes**: Handle HTTP only (parsing, validation, response). Delegate to services.
+- **Services**: Framework-agnostic business logic. Inject dependencies via constructor.
+- **Repositories**: Abstract data access behind interfaces. Return domain objects, not raw rows.
+
+**Component Architecture (Frontend)**
+```
+Container Components (data/state) → Presentational Components (pure UI)
+Custom Hooks (reusable logic) ← API Client (type-safe HTTP)
+```
+
+#### SOLID Principles (Quick Reference)
+
+1. **Single Responsibility**: Each class/function has ONE reason to change
+   - Services handle business logic, routes handle HTTP, repositories handle data
+2. **Open/Closed**: Use interfaces and dependency injection for extensibility
+3. **Liskov Substitution**: Use interfaces to define contracts, ensure substitutability
+4. **Interface Segregation**: Many specific interfaces > one general interface
+5. **Dependency Inversion**: Depend on abstractions (interfaces), inject via constructor
+
+#### OOP Guidelines
+
+**When to Use Classes**
+- Domain entities: `Problem`, `DailySelection`, `UserSettings`
+- Services with dependencies: `SelectionService`, `CsvParser`
+- Repositories: `SqliteProblemRepository`
+- API clients: `ApiClient`
+
+**Encapsulation**
+- Private fields (prefix with `_`), readonly for immutability
+- Public methods with explicit return types
+- Hide implementation details
+
+**Composition Over Inheritance**
+- Use strategy pattern for algorithms
+- Prefer interfaces + delegation over deep inheritance
+
+#### TypeScript Standards
+
+**Type Safety**
+- Enable `strict: true` in tsconfig
+- Never use `any` (use `unknown` or proper types)
+- Explicit return types on public methods
+- Discriminated unions for state: `{ status: 'loading' } | { status: 'success'; data: T }`
+
+**Naming Conventions**
+- Classes/Interfaces: `PascalCase` (interfaces: `IRepository` prefix for abstractions)
+- Functions/methods: `camelCase`
+- Constants: `SCREAMING_SNAKE_CASE`
+- Booleans: `isEligible`, `hasAttempts`, `shouldRetry`
+
+**Function Design**
+- One thing per function, < 30 lines
+- Pure functions when possible
+- No boolean parameters (use separate methods or strategy pattern)
+
+**Immutability**
+- `const` over `let`
+- `readonly` for properties
+- Spread operator for updates: `{ ...obj, field: newValue }`
+
+#### Error Handling
+
+- Custom error classes extending `DomainError`
+- Throw domain errors for expected failures: `ProblemNotFoundError`, `InvalidColorTransitionError`
+- Never swallow errors silently
+
+#### Testing
+
+- AAA pattern: Arrange, Act, Assert
+- Descriptive names: `should return 5 problems when user setting is 5`
+- Mock external dependencies (repositories, APIs)
+- One assertion per test (or closely related)
+
+#### Code Review Checklist
+- [ ] Classes have single responsibility
+- [ ] Dependencies injected via constructor
+- [ ] No `any` types
+- [ ] Public methods have return types
+- [ ] Domain errors for failures
+- [ ] No business logic in routes/components
+- [ ] Tests cover happy + error paths
