@@ -17,6 +17,7 @@ import type {
 import type {
   DailySelectionResponse,
   CompleteProblemRequest,
+  CompleteProblemResponse,
   ProblemWithSelection,
 } from './api-types.js';
 import { selectDailyProblems } from '../services/selection.js';
@@ -156,136 +157,6 @@ dailyRouter.get('/', (_req: Request, res: Response) => {
 });
 
 /**
- * POST /api/daily/:problemId/complete
- * Mark a problem as completed with color result
- *
- * Updates:
- * - Problem color (based on transition rules)
- * - Problem last_reviewed date
- * - Inserts attempt record
- * - Marks daily_selection as completed
- *
- * All updates performed in a transaction for atomicity
- *
- * @param {number} problemId - Problem ID to mark complete
- * @body {CompleteProblemRequest} { color: 'orange' | 'yellow' | 'green' }
- * @returns {Problem} Updated problem
- */
-dailyRouter.post('/:problemId/complete', (req: Request, res: Response) => {
-  try {
-    const { problemId } = req.params;
-
-    if (!problemId) {
-      res.status(400).json({
-        error: 'Validation Error',
-        message: 'Problem ID is required',
-      });
-      return;
-    }
-
-    const problemIdNum = parseInt(problemId, 10);
-
-    if (isNaN(problemIdNum)) {
-      res.status(400).json({
-        error: 'Validation Error',
-        message: 'Problem ID must be a number',
-      });
-      return;
-    }
-
-    const { color } = req.body as CompleteProblemRequest;
-
-    // Validate color result
-    const validColors: AttemptColorResult[] = ['orange', 'yellow', 'green'];
-    if (!color || !validColors.includes(color)) {
-      res.status(400).json({
-        error: 'Validation Error',
-        message: 'Color must be one of: orange, yellow, green',
-      });
-      return;
-    }
-
-    const db = getDatabase();
-    const today = getTodayDate();
-
-    // Check if problem exists and is in today's selection
-    const checkStmt = db.prepare(`
-      SELECT
-        p.id,
-        p.color as currentColor,
-        ds.id as selectionId,
-        ds.completed
-      FROM problems p
-      LEFT JOIN daily_selections ds ON p.id = ds.problem_id AND ds.selected_date = ?
-      WHERE p.id = ?
-    `);
-
-    const problemCheck = checkStmt.get(today, problemIdNum) as
-      | { id: number; currentColor: ProblemColor; selectionId: number | null; completed: number | null }
-      | undefined;
-
-    if (!problemCheck) {
-      res.status(404).json({
-        error: 'Not Found',
-        message: 'Problem not found',
-      });
-      return;
-    }
-
-    if (!problemCheck.selectionId) {
-      res.status(400).json({
-        error: 'Validation Error',
-        message: 'Problem is not in today\'s selection',
-      });
-      return;
-    }
-
-    // Use transaction to ensure atomicity
-    const completeTransaction = db.transaction(() => {
-      // Calculate next color based on transition rules
-      const nextColor = getNextColor(problemCheck.currentColor, color);
-
-      // Update problem color and last_reviewed
-      const updateProblemStmt = db.prepare(`
-        UPDATE problems
-        SET color = ?, last_reviewed = ?
-        WHERE id = ?
-      `);
-      updateProblemStmt.run(nextColor, today, problemIdNum);
-
-      // Insert attempt record
-      const insertAttemptStmt = db.prepare(`
-        INSERT INTO attempts (problem_id, color_result, attempted_at)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
-      `);
-      insertAttemptStmt.run(problemIdNum, color);
-
-      // Mark daily_selection as completed
-      const updateSelectionStmt = db.prepare(`
-        UPDATE daily_selections
-        SET completed = 1
-        WHERE id = ?
-      `);
-      updateSelectionStmt.run(problemCheck.selectionId);
-
-      // Fetch and return updated problem
-      const selectStmt = db.prepare('SELECT * FROM problems WHERE id = ?');
-      return selectStmt.get(problemIdNum) as Problem;
-    });
-
-    const updatedProblem = completeTransaction();
-
-    res.status(200).json(updatedProblem);
-  } catch (error) {
-    console.error('Error completing problem:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'Failed to complete problem',
-    });
-  }
-});
-
-/**
  * POST /api/daily/refresh
  * Generate a new selection for today
  *
@@ -357,6 +228,148 @@ dailyRouter.post('/refresh', (_req: Request, res: Response) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to refresh daily selection',
+    });
+  }
+});
+
+/**
+ * POST /api/daily/:problemId/complete
+ * Mark a problem as completed with color result
+ *
+ * Updates:
+ * - Problem color (based on transition rules)
+ * - Problem last_reviewed date
+ * - Inserts attempt record
+ * - Marks daily_selection as completed
+ *
+ * All updates performed in a transaction for atomicity
+ *
+ * @param {number} problemId - Problem ID to mark complete
+ * @body {CompleteProblemRequest} { colorResult: 'orange' | 'yellow' | 'green' }
+ * @returns {CompleteProblemResponse} { problem: DailyProblem }
+ */
+dailyRouter.post('/:problemId/complete', (req: Request, res: Response) => {
+  try {
+    const { problemId } = req.params;
+
+    if (!problemId) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: 'Problem ID is required',
+      });
+      return;
+    }
+
+    const problemIdNum = parseInt(problemId, 10);
+
+    if (isNaN(problemIdNum)) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: 'Problem ID must be a number',
+      });
+      return;
+    }
+
+    const { colorResult } = req.body as CompleteProblemRequest;
+
+    // Validate color result
+    const validColors: AttemptColorResult[] = ['orange', 'yellow', 'green'];
+    if (!colorResult || !validColors.includes(colorResult)) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: 'Color must be one of: orange, yellow, green',
+      });
+      return;
+    }
+
+    const db = getDatabase();
+    const today = getTodayDate();
+
+    // Check if problem exists and is in today's selection
+    const checkStmt = db.prepare(`
+      SELECT
+        p.id,
+        p.color as currentColor,
+        ds.id as selectionId,
+        ds.completed
+      FROM problems p
+      LEFT JOIN daily_selections ds ON p.id = ds.problem_id AND ds.selected_date = ?
+      WHERE p.id = ?
+    `);
+
+    const problemCheck = checkStmt.get(today, problemIdNum) as
+      | { id: number; currentColor: ProblemColor; selectionId: number | null; completed: number | null }
+      | undefined;
+
+    if (!problemCheck) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Problem not found',
+      });
+      return;
+    }
+
+    if (!problemCheck.selectionId) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: 'Problem is not in today\'s selection',
+      });
+      return;
+    }
+
+    // Use transaction to ensure atomicity
+    const completeTransaction = db.transaction(() => {
+      // Calculate next color based on transition rules
+      const nextColor = getNextColor(problemCheck.currentColor, colorResult);
+
+      // Update problem color and last_reviewed
+      const updateProblemStmt = db.prepare(`
+        UPDATE problems
+        SET color = ?, last_reviewed = ?
+        WHERE id = ?
+      `);
+      updateProblemStmt.run(nextColor, today, problemIdNum);
+
+      // Insert attempt record
+      const insertAttemptStmt = db.prepare(`
+        INSERT INTO attempts (problem_id, color_result, attempted_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+      `);
+      insertAttemptStmt.run(problemIdNum, colorResult);
+
+      // Mark daily_selection as completed
+      const updateSelectionStmt = db.prepare(`
+        UPDATE daily_selections
+        SET completed = 1
+        WHERE id = ?
+      `);
+      updateSelectionStmt.run(problemCheck.selectionId);
+
+      // Fetch updated problem with selection details
+      const selectStmt = db.prepare(`
+        SELECT
+          p.*,
+          ds.id as selectionId,
+          ds.completed
+        FROM problems p
+        LEFT JOIN daily_selections ds ON p.id = ds.problem_id AND ds.selected_date = ?
+        WHERE p.id = ?
+      `);
+      const row = selectStmt.get(today, problemIdNum) as any;
+      return {
+        ...row,
+        completed: row.completed === 1
+      } as ProblemWithSelection;
+    });
+
+    const updatedProblem = completeTransaction();
+
+    res.status(200).json({ problem: updatedProblem });
+  } catch (error) {
+    console.error('Error completing problem:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to complete problem',
     });
   }
 });

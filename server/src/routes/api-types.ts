@@ -68,5 +68,12 @@ export interface DailySelectionResponse {
  * Request body for completing a problem
  */
 export interface CompleteProblemRequest {
-  color: AttemptColorResult;
+  colorResult: AttemptColorResult;
+}
+
+/**
+ * Response for completing a problem
+ */
+export interface CompleteProblemResponse {
+  problem: ProblemWithSelection;
 }
