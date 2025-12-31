@@ -1,18 +1,142 @@
 /**
- * All Problems page - CSV import and problem management
+ * All Problems page - Full-featured problem management with table view
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo, Component } from 'react';
+import { problemsApi } from '../api/client';
+import type { Problem, ProblemColor } from '../api/types';
 import { ImportModal } from '../components/ImportModal';
+import { FilterBar } from '../components/FilterBar';
+import { ProblemsTable } from '../components/ProblemsTable';
+import { EditProblemModal } from '../components/EditProblemModal';
 
-export function AllProblems() {
+/**
+ * Error boundary to catch unexpected React errors
+ */
+class AllProblemsErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('AllProblems error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-red-800">
+                  Something went wrong. Please refresh the page.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AllProblemsContent() {
+  const [problems, setProblems] = useState<Problem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Import modal state
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importSuccess, setImportSuccess] = useState<{ imported: number; skipped: number } | null>(null);
 
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedColor, setSelectedColor] = useState<ProblemColor | 'all'>('all');
+
+  // Edit modal state
+  const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
+
+  // Fetch problems on mount and after import
+  const fetchProblems = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await problemsApi.getAll();
+      setProblems(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load problems');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProblems();
+  }, []);
+
+  // Filter problems based on search and color
+  const filteredProblems = useMemo(() => {
+    return problems.filter((problem) => {
+      // Search filter
+      const matchesSearch = searchQuery.trim() === '' ||
+        problem.name.toLowerCase().includes(searchQuery.toLowerCase());
+
+      // Color filter
+      const matchesColor = selectedColor === 'all' || problem.color === selectedColor;
+
+      return matchesSearch && matchesColor;
+    });
+  }, [problems, searchQuery, selectedColor]);
+
   const handleImportSuccess = (result: { imported: number; skipped: number }) => {
     setImportSuccess(result);
+    // Refetch problems after successful import
+    fetchProblems();
     // Clear success message after 5 seconds
     setTimeout(() => setImportSuccess(null), 5000);
+  };
+
+  const handleEdit = (problem: Problem) => {
+    setEditingProblem(problem);
+  };
+
+  const handleSave = async (problemId: number, updates: {
+    name?: string;
+    link?: string;
+    keyInsight?: string;
+    color?: ProblemColor;
+  }) => {
+    try {
+      const updatedProblem = await problemsApi.update(problemId, updates);
+
+      // Update the problem in the local state using functional update to avoid races
+      setProblems((prev) => {
+        // Verify the problem still exists before updating
+        const index = prev.findIndex(p => p.id === problemId);
+        if (index === -1) return prev;
+
+        const newProblems = [...prev];
+        newProblems[index] = updatedProblem;
+        return newProblems;
+      });
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Failed to update problem');
+    }
   };
 
   return (
@@ -64,42 +188,47 @@ export function AllProblems() {
         </div>
       )}
 
-      {/* MVP Notice */}
-      <div className="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg shadow-sm">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <svg className="h-6 w-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-blue-800 mb-2">
-              MVP Version
-            </h3>
-            <div className="text-sm text-blue-700 space-y-2">
-              <p>
-                This is the initial version focused on CSV import functionality.
-                The problem table view with filtering and sorting will be added in a future update.
-              </p>
-              <div className="mt-4">
-                <p className="font-medium mb-1">To get started:</p>
-                <ol className="list-decimal list-inside ml-2 space-y-1">
-                  <li>Click "Import CSV" above to upload your LeetCode problems</li>
-                  <li>Use the provided CSV format template</li>
-                  <li>After import, visit the Dashboard to start your daily practice</li>
-                </ol>
-              </div>
-              <div className="mt-4 p-3 bg-white rounded border border-blue-200">
-                <p className="font-medium text-blue-900 mb-1">Quick CSV Template:</p>
-                <div className="font-mono text-xs text-blue-800">
-                  Problem,Link,Color,LastReviewed,KeyInsight<br />
-                  Two Sum,https://leetcode.com/problems/two-sum/,gray,,Hash map for O(n)
-                </div>
-              </div>
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-red-800">{error}</p>
+              <button
+                onClick={fetchProblems}
+                className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+              >
+                Try again
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Filter Bar */}
+      <FilterBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        selectedColor={selectedColor}
+        onColorChange={setSelectedColor}
+      />
+
+      {/* Problems Table */}
+      <ProblemsTable
+        problems={filteredProblems}
+        onEdit={handleEdit}
+        isLoading={isLoading}
+      />
 
       {/* Import Modal */}
       <ImportModal
@@ -107,6 +236,25 @@ export function AllProblems() {
         onClose={() => setIsImportModalOpen(false)}
         onSuccess={handleImportSuccess}
       />
+
+      {/* Edit Problem Modal */}
+      <EditProblemModal
+        problem={editingProblem}
+        isOpen={!!editingProblem}
+        onClose={() => setEditingProblem(null)}
+        onSave={handleSave}
+      />
     </div>
+  );
+}
+
+/**
+ * Main AllProblems component with error boundary
+ */
+export function AllProblems() {
+  return (
+    <AllProblemsErrorBoundary>
+      <AllProblemsContent />
+    </AllProblemsErrorBoundary>
   );
 }

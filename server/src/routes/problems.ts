@@ -16,6 +16,7 @@ import type {
   CreateProblemRequest,
   UpdateProblemRequest,
   ProblemWithAttempts,
+  ProblemWithAttemptCount,
   GetProblemsQuery,
   ImportResult,
 } from './api-types.js';
@@ -43,14 +44,21 @@ const MAX_INSIGHT_LENGTH = 5000;
  * - color: Filter by problem color (gray, orange, yellow, green)
  * - search: Search by problem name (case-insensitive partial match)
  *
- * @returns {Problem[]} Array of problems
+ * @returns {ProblemWithAttemptCount[]} Array of problems with attempt counts
  */
 problemsRouter.get('/', (req: Request, res: Response) => {
   try {
     const db = getDatabase();
     const { color, search } = req.query as GetProblemsQuery;
 
-    let query = 'SELECT * FROM problems WHERE 1=1';
+    let query = `
+      SELECT
+        p.*,
+        COUNT(a.id) as attemptCount
+      FROM problems p
+      LEFT JOIN attempts a ON p.id = a.problem_id
+      WHERE 1=1
+    `;
     const params: SQLiteParameter[] = [];
 
     // Add color filter if provided
@@ -64,7 +72,7 @@ problemsRouter.get('/', (req: Request, res: Response) => {
         });
         return;
       }
-      query += ' AND color = ?';
+      query += ' AND p.color = ?';
       params.push(color);
     }
 
@@ -72,15 +80,15 @@ problemsRouter.get('/', (req: Request, res: Response) => {
     if (search) {
       // Escape SQL LIKE special characters to prevent SQL injection
       const escapedSearch = search.replace(/[%_\\]/g, '\\$&');
-      query += ' AND name LIKE ? ESCAPE ?';
+      query += ' AND p.name LIKE ? ESCAPE ?';
       params.push(`%${escapedSearch}%`, '\\');
     }
 
-    // Order by creation date (newest first)
-    query += ' ORDER BY created_at DESC';
+    // Group by problem and order by creation date (newest first)
+    query += ' GROUP BY p.id ORDER BY p.created_at DESC';
 
     const stmt = db.prepare(query);
-    const problems = stmt.all(...params) as Problem[];
+    const problems = stmt.all(...params) as ProblemWithAttemptCount[];
 
     res.status(200).json(problems);
   } catch (error) {
