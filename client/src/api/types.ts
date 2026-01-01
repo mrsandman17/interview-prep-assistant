@@ -10,8 +10,9 @@ export interface Problem {
   link: string;
   color: ProblemColor;
   keyInsight: string | null;
+  lastReviewed: string | null;
   createdAt: string;
-  updatedAt: string;
+  attemptCount?: number; // Optional for backwards compatibility, included in list endpoint
 }
 
 export interface DailyProblem extends Problem {
@@ -56,6 +57,7 @@ export interface UpdateProblemRequest {
   name?: string;
   link?: string;
   keyInsight?: string;
+  color?: ProblemColor;
 }
 
 export interface ImportProblemsRequest {

@@ -33,6 +33,13 @@ export interface ProblemWithAttempts extends Problem {
 }
 
 /**
+ * Problem with attempt count (for list views)
+ */
+export interface ProblemWithAttemptCount extends Problem {
+  attemptCount: number;
+}
+
+/**
  * Query parameters for GET /api/problems
  */
 export interface GetProblemsQuery {
