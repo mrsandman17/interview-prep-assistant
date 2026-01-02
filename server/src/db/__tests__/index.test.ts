@@ -243,21 +243,25 @@ describe('Database Initialization', () => {
     }).toThrow();
   });
 
-  it('should enforce daily_problem_count CHECK constraint (3-5)', () => {
+  it('should enforce daily_problem_count CHECK constraint (3-10)', () => {
     initializeDatabase(testDbPath);
     const db = getDatabase();
 
-    // Valid values (3, 4, 5) should work
+    // Valid values (3-10) should work
     expect(() => {
       db.prepare('UPDATE settings SET daily_problem_count = ? WHERE id = 1').run(3);
     }).not.toThrow();
 
     expect(() => {
-      db.prepare('UPDATE settings SET daily_problem_count = ? WHERE id = 1').run(4);
+      db.prepare('UPDATE settings SET daily_problem_count = ? WHERE id = 1').run(5);
     }).not.toThrow();
 
     expect(() => {
-      db.prepare('UPDATE settings SET daily_problem_count = ? WHERE id = 1').run(5);
+      db.prepare('UPDATE settings SET daily_problem_count = ? WHERE id = 1').run(6);
+    }).not.toThrow();
+
+    expect(() => {
+      db.prepare('UPDATE settings SET daily_problem_count = ? WHERE id = 1').run(10);
     }).not.toThrow();
 
     // Invalid values should throw
@@ -266,7 +270,7 @@ describe('Database Initialization', () => {
     }).toThrow();
 
     expect(() => {
-      db.prepare('UPDATE settings SET daily_problem_count = ? WHERE id = 1').run(6);
+      db.prepare('UPDATE settings SET daily_problem_count = ? WHERE id = 1').run(11);
     }).toThrow();
   });
 

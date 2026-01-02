@@ -534,11 +534,11 @@ describe('API Client', () => {
           ok: false,
           status: 400,
           statusText: 'Bad Request',
-          json: async () => ({ error: 'Daily problem count must be between 3 and 5' }),
+          json: async () => ({ error: 'Daily problem count must be between 3 and 10' }),
         });
 
-        await expect(settingsApi.update({ dailyProblemCount: 10 })).rejects.toThrow(
-          'Daily problem count must be between 3 and 5'
+        await expect(settingsApi.update({ dailyProblemCount: 15 })).rejects.toThrow(
+          'Daily problem count must be between 3 and 10'
         );
       });
 

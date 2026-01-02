@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS daily_selections (
 -- Stores user preferences and configuration
 CREATE TABLE IF NOT EXISTS settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
-  daily_problem_count INTEGER DEFAULT 5 CHECK(daily_problem_count BETWEEN 3 AND 5),
+  daily_problem_count INTEGER DEFAULT 5 CHECK(daily_problem_count BETWEEN 3 AND 10),
   theme TEXT DEFAULT 'light' CHECK(theme IN ('light', 'dark'))
 );
 

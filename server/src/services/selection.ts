@@ -177,7 +177,7 @@ function randomSelect<T>(array: T[], count: number): T[] {
  * This is the main selection algorithm that implements the core business logic:
  *
  * Algorithm Steps:
- * 1. Retrieve user's configured daily_problem_count from settings (3-5)
+ * 1. Retrieve user's configured daily_problem_count from settings (3-10)
  * 2. Query eligible problems from each pool (NEW, REVIEW, MASTERED)
  * 3. Calculate target counts: 50% NEW, 40% REVIEW, 10% MASTERED
  * 4. Randomly select from each pool up to target
@@ -229,8 +229,8 @@ export function selectDailyProblems(
   }
 
   // Validate count is within acceptable range
-  if (targetCount < 3 || targetCount > 5) {
-    throw new Error('Daily problem count must be between 3 and 5');
+  if (targetCount < 3 || targetCount > 10) {
+    throw new Error('Daily problem count must be between 3 and 10');
   }
 
   // Get eligible problems from each pool
