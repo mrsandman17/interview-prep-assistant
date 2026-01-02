@@ -50,7 +50,7 @@ CREATE TABLE daily_selections (
 -- Settings table (single row)
 CREATE TABLE settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
-  daily_problem_count INTEGER DEFAULT 5 CHECK(daily_problem_count BETWEEN 3 AND 5),
+  daily_problem_count INTEGER DEFAULT 5 CHECK(daily_problem_count BETWEEN 3 AND 10),
   theme TEXT DEFAULT 'light' CHECK(theme IN ('light', 'dark'))
 );
 ```
@@ -72,11 +72,11 @@ Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,2024-01
 - **Yellow**: Eligible if `last_reviewed` is 7+ days ago (or null)
 - **Green**: Eligible if `last_reviewed` is 14+ days ago (or null)
 
-### Selection Ratio (configurable 3-5 problems)
+### Selection Ratio (configurable 3-10 problems)
 - **50%** from NEW pool (gray)
 - **40%** from REVIEW pool (eligible orange + yellow)
 - **10%** from MASTERED pool (eligible green)
-- User can configure daily count (3, 4, or 5) in settings
+- User can configure daily count (3-10) in settings
 
 ### Algorithm Pseudocode
 ```
