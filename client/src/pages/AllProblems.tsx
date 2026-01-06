@@ -9,6 +9,7 @@ import { ImportModal } from '../components/ImportModal';
 import { FilterBar } from '../components/FilterBar';
 import { ProblemsTable } from '../components/ProblemsTable';
 import { EditProblemModal } from '../components/EditProblemModal';
+import { AddProblemModal } from '../components/AddProblemModal';
 
 /**
  * Error boundary to catch unexpected React errors
@@ -64,6 +65,10 @@ function AllProblemsContent() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importSuccess, setImportSuccess] = useState<{ imported: number; skipped: number } | null>(null);
 
+  // Add problem modal state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addSuccess, setAddSuccess] = useState<string | null>(null);
+
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedColor, setSelectedColor] = useState<ProblemColor | 'all'>('all');
@@ -107,13 +112,47 @@ function AllProblemsContent() {
     setImportSuccess(result);
     // Refetch problems after successful import
     fetchProblems();
-    // Clear success message after 5 seconds
-    setTimeout(() => setImportSuccess(null), 5000);
   };
+
+  // Clear import success message after 5 seconds
+  useEffect(() => {
+    if (importSuccess) {
+      const timeoutId = setTimeout(() => setImportSuccess(null), 5000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [importSuccess]);
 
   const handleEdit = (problem: Problem) => {
     setEditingProblem(problem);
   };
+
+  const handleCreate = async (data: { name: string; link: string; keyInsight?: string }) => {
+    try {
+      const newProblem = await problemsApi.create(data);
+
+      // Add the new problem to the local state (with duplicate check)
+      setProblems((prev) => {
+        // Prevent duplicate entries
+        if (prev.some(p => p.id === newProblem.id)) {
+          return prev;
+        }
+        return [...prev, newProblem];
+      });
+
+      // Show success message
+      setAddSuccess(newProblem.name);
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Failed to create problem');
+    }
+  };
+
+  // Clear add success message after 5 seconds
+  useEffect(() => {
+    if (addSuccess) {
+      const timeoutId = setTimeout(() => setAddSuccess(null), 5000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [addSuccess]);
 
   const handleSave = async (problemId: number, updates: {
     name?: string;
@@ -149,23 +188,39 @@ function AllProblemsContent() {
             Manage your LeetCode problem collection
           </p>
         </div>
-        <button
-          onClick={() => setIsImportModalOpen(true)}
-          className="
-            px-6 py-3 bg-blue-600 text-white rounded-lg font-medium
-            hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-            transition-colors duration-200
-            flex items-center space-x-2
-          "
-        >
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-          </svg>
-          <span>Import CSV</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="
+              px-6 py-3 bg-green-600 text-white rounded-lg font-medium
+              hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
+              transition-colors duration-200
+              flex items-center space-x-2
+            "
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Add Problem</span>
+          </button>
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="
+              px-6 py-3 bg-blue-600 text-white rounded-lg font-medium
+              hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+              transition-colors duration-200
+              flex items-center space-x-2
+            "
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <span>Import CSV</span>
+          </button>
+        </div>
       </div>
 
-      {/* Success Message */}
+      {/* Success Messages */}
       {importSuccess && (
         <div className="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded">
           <div className="flex">
@@ -183,6 +238,23 @@ function AllProblemsContent() {
                   Skipped {importSuccess.skipped} duplicate{importSuccess.skipped !== 1 ? 's' : ''}.
                 </p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addSuccess && (
+        <div className="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-green-800">
+                Successfully added "{addSuccess}"!
+              </p>
             </div>
           </div>
         </div>
@@ -228,6 +300,13 @@ function AllProblemsContent() {
         problems={filteredProblems}
         onEdit={handleEdit}
         isLoading={isLoading}
+      />
+
+      {/* Add Problem Modal */}
+      <AddProblemModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSave={handleCreate}
       />
 
       {/* Import Modal */}
