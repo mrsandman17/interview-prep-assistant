@@ -4,6 +4,7 @@
 
 import type {
   Problem,
+  DailyProblem,
   DailySelection,
   CompleteProblemRequest,
   CompleteProblemResponse,

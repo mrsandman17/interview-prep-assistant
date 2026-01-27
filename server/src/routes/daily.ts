@@ -463,19 +463,15 @@ dailyRouter.post('/:problemId/replace', (req: Request, res: Response) => {
       return;
     }
 
-    // Select a replacement problem
-    const replacementProblem = selectSingleProblem(db);
-
-    if (!replacementProblem) {
-      res.status(400).json({
-        error: 'Validation Error',
-        message: 'No eligible problems available for replacement',
-      });
-      return;
-    }
-
-    // Use transaction to ensure atomicity
+    // Use transaction to ensure atomicity (selection happens inside transaction)
     const replaceTransaction = db.transaction(() => {
+      // Select a replacement problem INSIDE transaction to prevent race conditions
+      const replacementProblem = selectSingleProblem(db);
+
+      if (!replacementProblem) {
+        throw new Error('No eligible problems available for replacement');
+      }
+
       // Delete old selection entry
       const deleteStmt = db.prepare(`
         DELETE FROM daily_selections
@@ -508,9 +504,19 @@ dailyRouter.post('/:problemId/replace', (req: Request, res: Response) => {
       } as ProblemWithSelection;
     });
 
-    const newProblem = replaceTransaction();
-
-    res.status(200).json({ problem: newProblem });
+    try {
+      const newProblem = replaceTransaction();
+      res.status(200).json({ problem: newProblem });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('No eligible problems')) {
+        res.status(400).json({
+          error: 'Validation Error',
+          message: 'No eligible problems available for replacement',
+        });
+        return;
+      }
+      throw error; // Re-throw unexpected errors
+    }
   } catch (error) {
     console.error('Error replacing problem:', error);
     res.status(500).json({
