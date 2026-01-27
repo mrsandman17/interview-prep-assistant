@@ -4,6 +4,7 @@
 
 import type {
   Problem,
+  DailyProblem,
   DailySelection,
   CompleteProblemRequest,
   CompleteProblemResponse,
@@ -123,6 +124,15 @@ export const dailyApi = {
    */
   refresh: async (): Promise<DailySelection> => {
     return fetchJSON<DailySelection>('/api/daily/refresh', {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Replace a specific problem in today's selection
+   */
+  replaceProblem: async (problemId: number): Promise<{ problem: DailyProblem }> => {
+    return fetchJSON<{ problem: DailyProblem }>(`/api/daily/${problemId}/replace`, {
       method: 'POST',
     });
   },

@@ -12,6 +12,7 @@ interface UseDailyResult {
   error: string | null;
   completeProblem: (problemId: number, colorResult: Exclude<ProblemColor, 'gray'>) => Promise<void>;
   refreshSelection: () => Promise<void>;
+  replaceProblem: (problemId: number) => Promise<DailyProblem>;
   refetch: () => Promise<void>;
 }
 
@@ -69,12 +70,30 @@ export function useDaily(): UseDailyResult {
     }
   }, []);
 
+  const replaceProblem = useCallback(async (problemId: number) => {
+    try {
+      setError(null);
+      const response = await dailyApi.replaceProblem(problemId);
+
+      // Replace the old problem with the new one in the array
+      setProblems((prev) =>
+        prev.map((p) => (p.id === problemId ? response.problem : p))
+      );
+
+      return response.problem;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to replace problem');
+      throw err;
+    }
+  }, []);
+
   return {
     problems,
     loading,
     error,
     completeProblem,
     refreshSelection,
+    replaceProblem,
     refetch: fetchDaily,
   };
 }

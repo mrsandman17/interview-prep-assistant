@@ -84,3 +84,10 @@ export interface CompleteProblemRequest {
 export interface CompleteProblemResponse {
   problem: ProblemWithSelection;
 }
+
+/**
+ * Response for replacing a problem in daily selection
+ */
+export interface ReplaceProblemResponse {
+  problem: ProblemWithSelection;
+}

@@ -671,3 +671,411 @@ describe('POST /api/daily/refresh', () => {
     });
   });
 });
+
+describe('POST /api/daily/:problemId/replace', () => {
+  it('should replace problem in today\'s selection with new problem', async () => {
+    const db = getDatabase();
+
+    // Create problems for initial selection
+    const id1 = insertProblem(db, 'Two Sum', 'gray');
+    const id2 = insertProblem(db, 'Valid Parentheses', 'gray');
+    const id3 = insertProblem(db, 'Merge Intervals', 'gray');
+
+    // Create initial selection with first two problems
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id1, getToday());
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id2, getToday());
+
+    // Replace first problem
+    const response = await request(app)
+      .post(`/api/daily/${id1}/replace`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('problem');
+    expect(response.body.problem.id).not.toBe(id1); // Should be a different problem
+
+    // Verify old problem is removed from today's selection
+    const oldSelection = db
+      .prepare('SELECT * FROM daily_selections WHERE problem_id = ? AND selected_date = ?')
+      .get(id1, getToday());
+    expect(oldSelection).toBeUndefined();
+
+    // Verify new problem is in today's selection
+    const newSelection = db
+      .prepare('SELECT * FROM daily_selections WHERE problem_id = ? AND selected_date = ?')
+      .get(response.body.problem.id, getToday());
+    expect(newSelection).toBeTruthy();
+  });
+
+  it('should return the replacement problem with selection metadata', async () => {
+    const db = getDatabase();
+
+    const id1 = insertProblem(db, 'Two Sum', 'gray');
+    insertProblem(db, 'Valid Parentheses', 'gray'); // Available for replacement
+
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id1, getToday());
+
+    const response = await request(app)
+      .post(`/api/daily/${id1}/replace`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.problem).toHaveProperty('id');
+    expect(response.body.problem).toHaveProperty('name');
+    expect(response.body.problem).toHaveProperty('link');
+    expect(response.body.problem).toHaveProperty('color');
+    expect(response.body.problem).toHaveProperty('selectionId');
+    expect(response.body.problem).toHaveProperty('completed');
+    expect(response.body.problem.completed).toBe(false);
+  });
+
+  it('should delete old selection entry and create new one', async () => {
+    const db = getDatabase();
+
+    const id1 = insertProblem(db, 'Two Sum', 'gray');
+    insertProblem(db, 'Valid Parentheses', 'gray');
+
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id1, getToday());
+
+    // Get count before replacement
+    const countBefore = (db
+      .prepare('SELECT COUNT(*) as count FROM daily_selections WHERE selected_date = ?')
+      .get(getToday()) as { count: number }).count;
+
+    const response = await request(app)
+      .post(`/api/daily/${id1}/replace`);
+
+    expect(response.status).toBe(200);
+
+    // Verify count remains the same (one deleted, one inserted)
+    const countAfter = (db
+      .prepare('SELECT COUNT(*) as count FROM daily_selections WHERE selected_date = ?')
+      .get(getToday()) as { count: number }).count;
+
+    expect(countAfter).toBe(countBefore);
+
+    // Verify old entry is gone
+    const oldEntry = db
+      .prepare('SELECT * FROM daily_selections WHERE problem_id = ? AND selected_date = ?')
+      .get(id1, getToday());
+    expect(oldEntry).toBeUndefined();
+
+    // Verify new entry exists
+    const newEntry = db
+      .prepare('SELECT * FROM daily_selections WHERE problem_id = ? AND selected_date = ?')
+      .get(response.body.problem.id, getToday());
+    expect(newEntry).toBeTruthy();
+  });
+
+  it('should return 400 when problem not in today\'s selection', async () => {
+    const db = getDatabase();
+
+    const id = insertProblem(db, 'Two Sum', 'gray');
+    // Don't add to daily_selections
+
+    const response = await request(app)
+      .post(`/api/daily/${id}/replace`);
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain('not in today\'s selection');
+  });
+
+  it('should return 400 when problem already completed', async () => {
+    const db = getDatabase();
+
+    const id = insertProblem(db, 'Two Sum', 'gray');
+    insertProblem(db, 'Valid Parentheses', 'gray'); // For replacement
+
+    // Create selection with completed status
+    db.prepare(
+      'INSERT INTO daily_selections (problem_id, selected_date, completed) VALUES (?, ?, ?)'
+    ).run(id, getToday(), 1);
+
+    const response = await request(app)
+      .post(`/api/daily/${id}/replace`);
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain('Cannot replace completed problem');
+  });
+
+  it('should return 400 when no eligible problems exist', async () => {
+    const db = getDatabase();
+
+    // Create only one problem and mark it as selected
+    const id = insertProblem(db, 'Two Sum', 'gray');
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id, getToday());
+
+    // No other eligible problems available
+    const response = await request(app)
+      .post(`/api/daily/${id}/replace`);
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain('No eligible problems available');
+  });
+
+  it('should return 404 when problem doesn\'t exist', async () => {
+    const response = await request(app)
+      .post('/api/daily/9999/replace');
+
+    expect(response.status).toBe(404);
+    expect(response.body.message).toContain('not found');
+  });
+
+  it('should use transaction for atomicity', async () => {
+    const db = getDatabase();
+
+    const id1 = insertProblem(db, 'Two Sum', 'gray');
+    insertProblem(db, 'Valid Parentheses', 'gray');
+
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id1, getToday());
+
+    // Get initial selection count
+    const initialCount = (db
+      .prepare('SELECT COUNT(*) as count FROM daily_selections WHERE selected_date = ?')
+      .get(getToday()) as { count: number }).count;
+
+    // Make successful request
+    const response = await request(app)
+      .post(`/api/daily/${id1}/replace`);
+
+    expect(response.status).toBe(200);
+
+    // Verify transaction completed - count should remain the same
+    const finalCount = (db
+      .prepare('SELECT COUNT(*) as count FROM daily_selections WHERE selected_date = ?')
+      .get(getToday()) as { count: number }).count;
+
+    expect(finalCount).toBe(initialCount);
+
+    // Verify old problem is gone and new problem exists
+    const oldExists = db
+      .prepare('SELECT COUNT(*) as count FROM daily_selections WHERE problem_id = ? AND selected_date = ?')
+      .get(id1, getToday()) as { count: number };
+    expect(oldExists.count).toBe(0);
+
+    const newExists = db
+      .prepare('SELECT COUNT(*) as count FROM daily_selections WHERE problem_id = ? AND selected_date = ?')
+      .get(response.body.problem.id, getToday()) as { count: number };
+    expect(newExists.count).toBe(1);
+  });
+
+  it('should exclude problem being replaced from selection pool', async () => {
+    const db = getDatabase();
+
+    // Create two problems
+    const id1 = insertProblem(db, 'Two Sum', 'gray');
+    const id2 = insertProblem(db, 'Valid Parentheses', 'gray');
+
+    // Select first problem for today
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id1, getToday());
+
+    // Replace it - should get id2, not id1
+    const response = await request(app)
+      .post(`/api/daily/${id1}/replace`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.problem.id).toBe(id2);
+    expect(response.body.problem.name).toBe('Valid Parentheses');
+  });
+
+  it('should return 400 when problemId is not a number', async () => {
+    const response = await request(app)
+      .post('/api/daily/invalid/replace');
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain('must be a number');
+  });
+
+  it('should return 400 when problemId is missing', async () => {
+    const response = await request(app)
+      .post('/api/daily//replace');
+
+    // This will likely hit a 404 due to route not matching, but let's verify behavior
+    expect([400, 404]).toContain(response.status);
+  });
+
+  it('should select replacement using priority order (NEW > REVIEW > MASTERED)', async () => {
+    const db = getDatabase();
+
+    // Create problem in today's selection
+    const id1 = insertProblem(db, 'To Replace', 'gray');
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id1, getToday());
+
+    // Create replacement candidates in all three pools
+    insertProblem(db, 'New Gray', 'gray');
+    insertProblem(db, 'Review Orange', 'orange', getDaysAgo(5));
+    insertProblem(db, 'Mastered Green', 'green', getDaysAgo(20));
+
+    const response = await request(app)
+      .post(`/api/daily/${id1}/replace`);
+
+    expect(response.status).toBe(200);
+    // Should prioritize NEW (gray) problem
+    expect(response.body.problem.color).toBe('gray');
+    expect(response.body.problem.name).toBe('New Gray');
+  });
+
+  it('should fallback to REVIEW when NEW pool is empty', async () => {
+    const db = getDatabase();
+
+    // Create gray problem in today's selection
+    const id1 = insertProblem(db, 'To Replace', 'gray');
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id1, getToday());
+
+    // Create only REVIEW and MASTERED candidates (no NEW)
+    insertProblem(db, 'Review Orange', 'orange', getDaysAgo(5));
+    insertProblem(db, 'Mastered Green', 'green', getDaysAgo(20));
+
+    const response = await request(app)
+      .post(`/api/daily/${id1}/replace`);
+
+    expect(response.status).toBe(200);
+    // Should select REVIEW over MASTERED
+    expect(response.body.problem.color).toBe('orange');
+  });
+
+  it('should fallback to MASTERED when NEW and REVIEW pools are empty', async () => {
+    const db = getDatabase();
+
+    const id1 = insertProblem(db, 'To Replace', 'gray');
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id1, getToday());
+
+    // Create only MASTERED candidates
+    insertProblem(db, 'Mastered Green', 'green', getDaysAgo(20));
+
+    const response = await request(app)
+      .post(`/api/daily/${id1}/replace`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.problem.color).toBe('green');
+  });
+
+  it('should not replace problems from previous days\' selections', async () => {
+    const db = getDatabase();
+
+    const id1 = insertProblem(db, 'Yesterday Problem', 'gray');
+    const id2 = insertProblem(db, 'Today Problem', 'gray');
+
+    // Insert problem in yesterday's selection
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(
+      id1,
+      getDaysAgo(1)
+    );
+
+    // Try to replace yesterday's problem
+    const response = await request(app)
+      .post(`/api/daily/${id1}/replace`);
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain('not in today\'s selection');
+  });
+
+  it('should handle multiple replacements in same day', async () => {
+    const db = getDatabase();
+
+    // Create multiple problems
+    const id1 = insertProblem(db, 'Problem 1', 'gray');
+    const id2 = insertProblem(db, 'Problem 2', 'gray');
+    insertProblem(db, 'Replacement 1', 'gray');
+    insertProblem(db, 'Replacement 2', 'gray');
+
+    // Add to today's selection
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id1, getToday());
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id2, getToday());
+
+    // Replace first problem
+    const response1 = await request(app)
+      .post(`/api/daily/${id1}/replace`);
+    expect(response1.status).toBe(200);
+
+    // Replace second problem
+    const response2 = await request(app)
+      .post(`/api/daily/${id2}/replace`);
+    expect(response2.status).toBe(200);
+
+    // Verify both replacements succeeded
+    expect(response1.body.problem.id).not.toBe(id1);
+    expect(response2.body.problem.id).not.toBe(id2);
+
+    // Verify we still have exactly 2 selections for today
+    const count = (db
+      .prepare('SELECT COUNT(*) as count FROM daily_selections WHERE selected_date = ?')
+      .get(getToday()) as { count: number }).count;
+    expect(count).toBe(2);
+  });
+
+  it('should respect eligibility thresholds for replacement selection', async () => {
+    const db = getDatabase();
+
+    const id1 = insertProblem(db, 'To Replace', 'gray');
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id1, getToday());
+
+    // Create problems with various eligibility
+    insertProblem(db, 'Orange Eligible', 'orange', getDaysAgo(3)); // Eligible (3 days)
+    insertProblem(db, 'Orange Not Eligible', 'orange', getDaysAgo(2)); // Not eligible
+    insertProblem(db, 'Yellow Eligible', 'yellow', getDaysAgo(7)); // Eligible (7 days)
+    insertProblem(db, 'Yellow Not Eligible', 'yellow', getDaysAgo(6)); // Not eligible
+    insertProblem(db, 'Green Eligible', 'green', getDaysAgo(14)); // Eligible (14 days)
+    insertProblem(db, 'Green Not Eligible', 'green', getDaysAgo(13)); // Not eligible
+
+    const response = await request(app)
+      .post(`/api/daily/${id1}/replace`);
+
+    expect(response.status).toBe(200);
+
+    // Should only select from eligible problems
+    const eligibleNames = ['Orange Eligible', 'Yellow Eligible', 'Green Eligible'];
+    expect(eligibleNames).toContain(response.body.problem.name);
+  });
+
+  it('should return new selection as not completed', async () => {
+    const db = getDatabase();
+
+    const id1 = insertProblem(db, 'To Replace', 'gray');
+    insertProblem(db, 'Replacement', 'gray');
+
+    db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id1, getToday());
+
+    const response = await request(app)
+      .post(`/api/daily/${id1}/replace`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.problem.completed).toBe(false);
+
+    // Verify in database
+    const selection = db
+      .prepare('SELECT completed FROM daily_selections WHERE problem_id = ? AND selected_date = ?')
+      .get(response.body.problem.id, getToday()) as { completed: number };
+
+    expect(selection.completed).toBe(0);
+  });
+
+  it('should handle concurrent selection scenarios', async () => {
+    const db = getDatabase();
+
+    // Create a full daily selection
+    for (let i = 1; i <= 5; i++) {
+      const id = insertProblem(db, `Selected ${i}`, 'gray');
+      db.prepare('INSERT INTO daily_selections (problem_id, selected_date) VALUES (?, ?)').run(id, getToday());
+    }
+
+    // Create replacement candidates
+    for (let i = 1; i <= 3; i++) {
+      insertProblem(db, `Candidate ${i}`, 'gray');
+    }
+
+    // Replace first problem
+    const response = await request(app)
+      .post('/api/daily/1/replace');
+
+    expect(response.status).toBe(200);
+
+    // Verify total count remains 5
+    const count = (db
+      .prepare('SELECT COUNT(*) as count FROM daily_selections WHERE selected_date = ?')
+      .get(getToday()) as { count: number }).count;
+    expect(count).toBe(5);
+
+    // Verify replacement is one of the candidates
+    const candidateNames = ['Candidate 1', 'Candidate 2', 'Candidate 3'];
+    expect(candidateNames).toContain(response.body.problem.name);
+  });
+});
