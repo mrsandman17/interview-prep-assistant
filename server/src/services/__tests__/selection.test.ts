@@ -27,6 +27,7 @@ import {
   getEligibleReview,
   getEligibleMastered,
   selectDailyProblems,
+  selectSingleProblem,
 } from '../selection.js';
 
 /**
@@ -550,5 +551,241 @@ describe('selectDailyProblems', () => {
     expect(selected).toHaveLength(5);
     expect(selected.filter((p) => p.color === 'gray')).toHaveLength(3);
     expect(selected.filter((p) => p.color === 'orange')).toHaveLength(2);
+  });
+});
+
+describe('selectSingleProblem', () => {
+  it('should return one NEW problem when NEW pool has eligible problems', () => {
+    const db = getDatabase();
+
+    // Create problems in all pools
+    insertProblem('Gray 1', 'gray');
+    insertProblem('Gray 2', 'gray');
+    insertProblem('Orange 1', 'orange', getDaysAgo(5));
+    insertProblem('Green 1', 'green', getDaysAgo(20));
+
+    const selected = selectSingleProblem(db);
+
+    expect(selected).toBeTruthy();
+    expect(selected?.color).toBe('gray');
+  });
+
+  it('should return one REVIEW problem when only REVIEW pool has eligible problems', () => {
+    const db = getDatabase();
+
+    // Only create review problems
+    insertProblem('Orange 1', 'orange', getDaysAgo(5));
+    insertProblem('Orange 2', 'orange', getDaysAgo(10));
+    insertProblem('Yellow 1', 'yellow', getDaysAgo(10));
+
+    const selected = selectSingleProblem(db);
+
+    expect(selected).toBeTruthy();
+    expect(['orange', 'yellow']).toContain(selected?.color);
+  });
+
+  it('should return one MASTERED problem when only MASTERED pool has eligible problems', () => {
+    const db = getDatabase();
+
+    // Only create mastered problems
+    insertProblem('Green 1', 'green', getDaysAgo(20));
+    insertProblem('Green 2', 'green', getDaysAgo(30));
+
+    const selected = selectSingleProblem(db);
+
+    expect(selected).toBeTruthy();
+    expect(selected?.color).toBe('green');
+  });
+
+  it('should prioritize NEW over REVIEW over MASTERED', () => {
+    const db = getDatabase();
+
+    // Create problems in all three pools
+    insertProblem('Gray 1', 'gray');
+    insertProblem('Orange 1', 'orange', getDaysAgo(5));
+    insertProblem('Green 1', 'green', getDaysAgo(20));
+
+    // Run selection multiple times to verify it always picks from NEW pool
+    for (let i = 0; i < 10; i++) {
+      const selected = selectSingleProblem(db);
+      expect(selected?.color).toBe('gray');
+    }
+  });
+
+  it('should exclude problems already in today\'s selection', () => {
+    const db = getDatabase();
+
+    // Create two gray problems
+    const id1 = insertProblem('Gray 1', 'gray');
+    insertProblem('Gray 2', 'gray');
+
+    // Mark first one as selected today
+    markAsSelectedToday(id1);
+
+    const selected = selectSingleProblem(db);
+
+    expect(selected).toBeTruthy();
+    expect(selected?.id).not.toBe(id1);
+    expect(selected?.name).toBe('Gray 2');
+  });
+
+  it('should return null when no eligible problems exist', () => {
+    const db = getDatabase();
+
+    // Create only ineligible problems
+    insertProblem('Orange Recent', 'orange', getDaysAgo(1)); // Too recent
+    insertProblem('Yellow Recent', 'yellow', getDaysAgo(3)); // Too recent
+    insertProblem('Green Recent', 'green', getDaysAgo(5)); // Too recent
+
+    const selected = selectSingleProblem(db);
+
+    expect(selected).toBeNull();
+  });
+
+  it('should return null when all problems are already selected today', () => {
+    const db = getDatabase();
+
+    // Create problems and mark them all as selected
+    const id1 = insertProblem('Gray 1', 'gray');
+    const id2 = insertProblem('Gray 2', 'gray');
+    const id3 = insertProblem('Orange 1', 'orange', getDaysAgo(5));
+
+    markAsSelectedToday(id1);
+    markAsSelectedToday(id2);
+    markAsSelectedToday(id3);
+
+    const selected = selectSingleProblem(db);
+
+    expect(selected).toBeNull();
+  });
+
+  it('should apply same eligibility rules (3/7/14 day thresholds)', () => {
+    const db = getDatabase();
+
+    // Create problems with various last_reviewed dates
+    insertProblem('Orange Eligible', 'orange', getDaysAgo(3)); // Exactly 3 days (eligible)
+    insertProblem('Orange Not Eligible', 'orange', getDaysAgo(2)); // Too recent
+
+    insertProblem('Yellow Eligible', 'yellow', getDaysAgo(7)); // Exactly 7 days (eligible)
+    insertProblem('Yellow Not Eligible', 'yellow', getDaysAgo(6)); // Too recent
+
+    insertProblem('Green Eligible', 'green', getDaysAgo(14)); // Exactly 14 days (eligible)
+    insertProblem('Green Not Eligible', 'green', getDaysAgo(13)); // Too recent
+
+    // Run multiple selections and verify we never get ineligible problems
+    for (let i = 0; i < 20; i++) {
+      // Clear previous selections to allow re-selection
+      db.prepare('DELETE FROM daily_selections').run();
+
+      const selected = selectSingleProblem(db);
+
+      expect(selected).toBeTruthy();
+
+      // Verify we only get eligible problems
+      if (selected?.color === 'orange') {
+        expect(selected.name).toBe('Orange Eligible');
+      } else if (selected?.color === 'yellow') {
+        expect(selected.name).toBe('Yellow Eligible');
+      } else if (selected?.color === 'green') {
+        expect(selected.name).toBe('Green Eligible');
+      }
+    }
+  });
+
+  it('should randomly select from the chosen pool', () => {
+    const db = getDatabase();
+
+    // Create multiple gray problems
+    insertProblem('Gray 1', 'gray');
+    insertProblem('Gray 2', 'gray');
+    insertProblem('Gray 3', 'gray');
+    insertProblem('Gray 4', 'gray');
+    insertProblem('Gray 5', 'gray');
+
+    // Run selection multiple times and collect results
+    const selectedIds = new Set<number>();
+
+    for (let i = 0; i < 20; i++) {
+      const selected = selectSingleProblem(db);
+      if (selected) {
+        selectedIds.add(selected.id);
+      }
+    }
+
+    // With 5 problems and 20 runs, we should see multiple different selections
+    // (statistically very likely to get at least 3 different problems)
+    expect(selectedIds.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('should handle edge case where only one problem is eligible', () => {
+    const db = getDatabase();
+
+    // Create only one eligible problem
+    insertProblem('Only Gray', 'gray');
+    insertProblem('Orange Recent', 'orange', getDaysAgo(1)); // Ineligible
+
+    const selected = selectSingleProblem(db);
+
+    expect(selected).toBeTruthy();
+    expect(selected?.name).toBe('Only Gray');
+  });
+
+  it('should respect null last_reviewed as always eligible', () => {
+    const db = getDatabase();
+
+    // Create problems with null last_reviewed
+    insertProblem('Orange Never Reviewed', 'orange', null);
+    insertProblem('Yellow Never Reviewed', 'yellow', null);
+    insertProblem('Green Never Reviewed', 'green', null);
+
+    // All should be eligible for selection
+    const selected = selectSingleProblem(db);
+
+    expect(selected).toBeTruthy();
+    expect(['orange', 'yellow', 'green']).toContain(selected?.color);
+  });
+
+  it('should fallback to REVIEW when NEW pool is empty', () => {
+    const db = getDatabase();
+
+    // No gray problems, only review and mastered
+    insertProblem('Orange 1', 'orange', getDaysAgo(5));
+    insertProblem('Green 1', 'green', getDaysAgo(20));
+
+    const selected = selectSingleProblem(db);
+
+    expect(selected).toBeTruthy();
+    // Should select from REVIEW pool (orange) not MASTERED (green) due to priority
+    expect(selected?.color).toBe('orange');
+  });
+
+  it('should fallback to MASTERED when NEW and REVIEW pools are empty', () => {
+    const db = getDatabase();
+
+    // No gray or review problems, only mastered
+    insertProblem('Green 1', 'green', getDaysAgo(20));
+    insertProblem('Green 2', 'green', getDaysAgo(25));
+
+    const selected = selectSingleProblem(db);
+
+    expect(selected).toBeTruthy();
+    expect(selected?.color).toBe('green');
+  });
+
+  it('should handle mixed eligibility across pools', () => {
+    const db = getDatabase();
+
+    // Mix of eligible and ineligible problems
+    insertProblem('Gray 1', 'gray'); // Eligible (always)
+    insertProblem('Orange Recent', 'orange', getDaysAgo(1)); // Not eligible
+    insertProblem('Orange Old', 'orange', getDaysAgo(10)); // Eligible
+    insertProblem('Yellow Recent', 'yellow', getDaysAgo(5)); // Not eligible
+    insertProblem('Green Old', 'green', getDaysAgo(20)); // Eligible
+
+    // Run multiple times - should always pick Gray 1 due to NEW priority
+    for (let i = 0; i < 10; i++) {
+      const selected = selectSingleProblem(db);
+      expect(selected?.name).toBe('Gray 1');
+    }
   });
 });

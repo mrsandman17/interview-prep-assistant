@@ -9,6 +9,7 @@ import { ColorButton } from './ColorButton';
 interface ProblemCardProps {
   problem: DailyProblem;
   onComplete: (problemId: number, colorResult: Exclude<ProblemColor, 'gray'>) => Promise<void>;
+  onReplace: (problemId: number) => Promise<void>;
 }
 
 const colorBadgeStyles: Record<ProblemColor, string> = {
@@ -25,8 +26,9 @@ const colorLabels: Record<ProblemColor, string> = {
   green: 'Mastered',
 };
 
-export function ProblemCard({ problem, onComplete }: ProblemCardProps) {
+export function ProblemCard({ problem, onComplete, onReplace }: ProblemCardProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReplacing, setIsReplacing] = useState(false);
 
   const handleColorSelect = async (color: Exclude<ProblemColor, 'gray'>) => {
     try {
@@ -36,6 +38,17 @@ export function ProblemCard({ problem, onComplete }: ProblemCardProps) {
       console.error('Failed to complete problem:', err);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleReplace = async () => {
+    try {
+      setIsReplacing(true);
+      await onReplace(problem.id);
+    } catch (err) {
+      console.error('Failed to replace problem:', err);
+    } finally {
+      setIsReplacing(false);
     }
   };
 
@@ -74,19 +87,32 @@ export function ProblemCard({ problem, onComplete }: ProblemCardProps) {
             <ColorButton
               color="orange"
               onClick={() => handleColorSelect('orange')}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isReplacing}
             />
             <ColorButton
               color="yellow"
               onClick={() => handleColorSelect('yellow')}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isReplacing}
             />
             <ColorButton
               color="green"
               onClick={() => handleColorSelect('green')}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isReplacing}
             />
           </div>
+          <button
+            onClick={handleReplace}
+            disabled={isReplacing || isSubmitting}
+            className="
+              mt-3 w-full px-4 py-2 text-sm text-gray-600 bg-gray-50 border border-gray-300 rounded-lg
+              hover:bg-gray-100 hover:text-gray-700
+              focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
+              disabled:opacity-50 disabled:cursor-not-allowed
+              transition-colors duration-200
+            "
+          >
+            {isReplacing ? 'Replacing...' : '↻ Skip This Problem'}
+          </button>
         </div>
       )}
 

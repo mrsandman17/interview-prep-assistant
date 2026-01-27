@@ -24,13 +24,13 @@ describe('ProblemCard', () => {
 
   describe('Pending state rendering', () => {
     it('should render problem name', () => {
-      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.getByText('Two Sum')).toBeInTheDocument();
     });
 
     it('should render problem link with correct attributes', () => {
-      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       const link = screen.getByRole('link', { name: /view problem/i });
       expect(link).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe('ProblemCard', () => {
     });
 
     it('should render color badge for gray problem', () => {
-      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       const badge = screen.getByText('New');
       expect(badge).toBeInTheDocument();
@@ -49,7 +49,7 @@ describe('ProblemCard', () => {
 
     it('should render color badge for orange problem', () => {
       const problem = { ...baseProblem, color: 'orange' as const };
-      render(<ProblemCard problem={problem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={problem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       // Find the badge by class (not the button text)
       const badges = screen.getAllByText('Struggling');
@@ -60,7 +60,7 @@ describe('ProblemCard', () => {
 
     it('should render color badge for yellow problem', () => {
       const problem = { ...baseProblem, color: 'yellow' as const };
-      render(<ProblemCard problem={problem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={problem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       // Find the badge by class (not the button text)
       const badges = screen.getAllByText('Okay');
@@ -71,7 +71,7 @@ describe('ProblemCard', () => {
 
     it('should render color badge for green problem', () => {
       const problem = { ...baseProblem, color: 'green' as const };
-      render(<ProblemCard problem={problem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={problem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       // Find the badge by class (not the button text)
       const badges = screen.getAllByText('Mastered');
@@ -81,13 +81,13 @@ describe('ProblemCard', () => {
     });
 
     it('should render "How did you do?" prompt', () => {
-      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.getByText('How did you do?')).toBeInTheDocument();
     });
 
     it('should render all three color selection buttons', () => {
-      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.getByRole('button', { name: /mark as struggling/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /mark as okay/i })).toBeInTheDocument();
@@ -95,7 +95,7 @@ describe('ProblemCard', () => {
     });
 
     it('should not render completed checkmark when not completed', () => {
-      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.queryByText('Completed')).not.toBeInTheDocument();
     });
@@ -109,13 +109,13 @@ describe('ProblemCard', () => {
     };
 
     it('should render completed checkmark', () => {
-      render(<ProblemCard problem={completedProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={completedProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.getByText('Completed')).toBeInTheDocument();
     });
 
     it('should not render color selection buttons when completed', () => {
-      render(<ProblemCard problem={completedProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={completedProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.queryByRole('button', { name: /mark as struggling/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /mark as okay/i })).not.toBeInTheDocument();
@@ -123,7 +123,7 @@ describe('ProblemCard', () => {
     });
 
     it('should not render "How did you do?" prompt when completed', () => {
-      render(<ProblemCard problem={completedProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={completedProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.queryByText('How did you do?')).not.toBeInTheDocument();
     });
@@ -134,14 +134,14 @@ describe('ProblemCard', () => {
         keyInsight: 'Use a hash map for O(n) time complexity',
       };
 
-      render(<ProblemCard problem={problemWithInsight} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={problemWithInsight} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.getByText('Key Insight:')).toBeInTheDocument();
       expect(screen.getByText(/Use a hash map for O\(n\) time complexity/)).toBeInTheDocument();
     });
 
     it('should not render key insight section when insight is null', () => {
-      render(<ProblemCard problem={completedProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={completedProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.queryByText('Key Insight:')).not.toBeInTheDocument();
     });
@@ -152,7 +152,7 @@ describe('ProblemCard', () => {
         keyInsight: '',
       };
 
-      render(<ProblemCard problem={problemWithEmptyInsight} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={problemWithEmptyInsight} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.queryByText('Key Insight:')).not.toBeInTheDocument();
     });
@@ -164,7 +164,7 @@ describe('ProblemCard', () => {
         keyInsight: longInsight,
       };
 
-      render(<ProblemCard problem={problemWithLongInsight} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={problemWithLongInsight} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.getByText(longInsight)).toBeInTheDocument();
     });
@@ -179,7 +179,7 @@ describe('ProblemCard', () => {
 
     it('should call onComplete with orange when orange button is clicked', async () => {
       const user = userEvent.setup();
-      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} />);
+      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} onReplace={vi.fn()} />);
 
       const orangeButton = screen.getByRole('button', { name: /mark as struggling/i });
       await user.click(orangeButton);
@@ -191,7 +191,7 @@ describe('ProblemCard', () => {
 
     it('should call onComplete with yellow when yellow button is clicked', async () => {
       const user = userEvent.setup();
-      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} />);
+      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} onReplace={vi.fn()} />);
 
       const yellowButton = screen.getByRole('button', { name: /mark as okay/i });
       await user.click(yellowButton);
@@ -203,7 +203,7 @@ describe('ProblemCard', () => {
 
     it('should call onComplete with green when green button is clicked', async () => {
       const user = userEvent.setup();
-      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} />);
+      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} onReplace={vi.fn()} />);
 
       const greenButton = screen.getByRole('button', { name: /mark as mastered/i });
       await user.click(greenButton);
@@ -222,7 +222,7 @@ describe('ProblemCard', () => {
 
       mockOnComplete = vi.fn().mockReturnValue(completePromise);
 
-      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} />);
+      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} onReplace={vi.fn()} />);
 
       const greenButton = screen.getByRole('button', { name: /mark as mastered/i });
       await user.click(greenButton);
@@ -245,7 +245,7 @@ describe('ProblemCard', () => {
 
     it('should re-enable buttons after successful submission', async () => {
       const user = userEvent.setup();
-      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} />);
+      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} onReplace={vi.fn()} />);
 
       const greenButton = screen.getByRole('button', { name: /mark as mastered/i });
       await user.click(greenButton);
@@ -266,7 +266,7 @@ describe('ProblemCard', () => {
 
       mockOnComplete = vi.fn().mockRejectedValue(new Error('Failed to complete'));
 
-      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} />);
+      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} onReplace={vi.fn()} />);
 
       const greenButton = screen.getByRole('button', { name: /mark as mastered/i });
       await user.click(greenButton);
@@ -290,7 +290,7 @@ describe('ProblemCard', () => {
 
       mockOnComplete = vi.fn().mockRejectedValue(error);
 
-      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} />);
+      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} onReplace={vi.fn()} />);
 
       const greenButton = screen.getByRole('button', { name: /mark as mastered/i });
       await user.click(greenButton);
@@ -304,7 +304,7 @@ describe('ProblemCard', () => {
 
     it('should handle multiple button clicks for different colors', async () => {
       const user = userEvent.setup();
-      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} />);
+      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} onReplace={vi.fn()} />);
 
       const orangeButton = screen.getByRole('button', { name: /mark as struggling/i });
       await user.click(orangeButton);
@@ -326,14 +326,14 @@ describe('ProblemCard', () => {
 
   describe('Accessibility', () => {
     it('should have proper heading structure', () => {
-      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       const heading = screen.getByRole('heading', { name: 'Two Sum' });
       expect(heading).toBeInTheDocument();
     });
 
     it('should have accessible link text', () => {
-      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       const link = screen.getByRole('link', { name: /view problem/i });
       expect(link).toBeInTheDocument();
@@ -341,10 +341,197 @@ describe('ProblemCard', () => {
 
     it('should have checkmark icon with proper attributes', () => {
       const completedProblem = { ...baseProblem, completed: true };
-      render(<ProblemCard problem={completedProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={completedProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       const checkmark = screen.getByText('Completed').previousElementSibling;
       expect(checkmark).toBeInTheDocument();
+    });
+  });
+
+  describe('Replace problem functionality', () => {
+    let mockOnReplace: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      mockOnReplace = vi.fn().mockResolvedValue(undefined);
+    });
+
+    it('should render "Skip This Problem" button for pending problems', () => {
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={mockOnReplace} />);
+
+      const skipButton = screen.getByRole('button', { name: /skip this problem/i });
+      expect(skipButton).toBeInTheDocument();
+    });
+
+    it('should not render "Skip This Problem" button for completed problems', () => {
+      const completedProblem = { ...baseProblem, completed: true };
+      render(<ProblemCard problem={completedProblem} onComplete={vi.fn()} onReplace={mockOnReplace} />);
+
+      const skipButton = screen.queryByRole('button', { name: /skip this problem/i });
+      expect(skipButton).not.toBeInTheDocument();
+    });
+
+    it('should call onReplace with problem ID when skip button is clicked', async () => {
+      const user = userEvent.setup();
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={mockOnReplace} />);
+
+      const skipButton = screen.getByRole('button', { name: /skip this problem/i });
+      await user.click(skipButton);
+
+      await waitFor(() => {
+        expect(mockOnReplace).toHaveBeenCalledWith(1);
+      });
+    });
+
+    it('should disable skip button during replacement', async () => {
+      const user = userEvent.setup();
+      let resolveReplace: () => void;
+      const replacePromise = new Promise<void>((resolve) => {
+        resolveReplace = resolve;
+      });
+
+      mockOnReplace = vi.fn().mockReturnValue(replacePromise);
+
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={mockOnReplace} />);
+
+      const skipButton = screen.getByRole('button', { name: /skip this problem/i });
+      await user.click(skipButton);
+
+      // Button should be disabled during replacement
+      expect(skipButton).toBeDisabled();
+      expect(skipButton).toHaveTextContent('Replacing...');
+
+      // Resolve the promise
+      resolveReplace!();
+
+      await waitFor(() => {
+        expect(skipButton).not.toBeDisabled();
+      });
+    });
+
+    it('should disable skip button when color buttons are being submitted', async () => {
+      const user = userEvent.setup();
+      let resolveComplete: () => void;
+      const completePromise = new Promise<void>((resolve) => {
+        resolveComplete = resolve;
+      });
+
+      const mockOnComplete = vi.fn().mockReturnValue(completePromise);
+
+      render(<ProblemCard problem={baseProblem} onComplete={mockOnComplete} onReplace={mockOnReplace} />);
+
+      const greenButton = screen.getByRole('button', { name: /mark as mastered/i });
+      await user.click(greenButton);
+
+      // Skip button should be disabled during color submission
+      const skipButton = screen.getByRole('button', { name: /skip this problem/i });
+      expect(skipButton).toBeDisabled();
+
+      // Resolve the promise
+      resolveComplete!();
+
+      await waitFor(() => {
+        expect(skipButton).not.toBeDisabled();
+      });
+    });
+
+    it('should disable color buttons when skip button is being processed', async () => {
+      const user = userEvent.setup();
+      let resolveReplace: () => void;
+      const replacePromise = new Promise<void>((resolve) => {
+        resolveReplace = resolve;
+      });
+
+      mockOnReplace = vi.fn().mockReturnValue(replacePromise);
+
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={mockOnReplace} />);
+
+      const skipButton = screen.getByRole('button', { name: /skip this problem/i });
+      await user.click(skipButton);
+
+      // Color buttons should be disabled during replacement
+      const orangeButton = screen.getByRole('button', { name: /mark as struggling/i });
+      const yellowButton = screen.getByRole('button', { name: /mark as okay/i });
+      const greenButton = screen.getByRole('button', { name: /mark as mastered/i });
+
+      expect(orangeButton).toBeDisabled();
+      expect(yellowButton).toBeDisabled();
+      expect(greenButton).toBeDisabled();
+
+      // Resolve the promise
+      resolveReplace!();
+
+      await waitFor(() => {
+        expect(orangeButton).not.toBeDisabled();
+      });
+    });
+
+    it('should re-enable skip button after successful replacement', async () => {
+      const user = userEvent.setup();
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={mockOnReplace} />);
+
+      const skipButton = screen.getByRole('button', { name: /skip this problem/i });
+      await user.click(skipButton);
+
+      await waitFor(() => {
+        expect(mockOnReplace).toHaveBeenCalled();
+      });
+
+      // Button should be enabled again
+      expect(skipButton).not.toBeDisabled();
+      expect(skipButton).toHaveTextContent('↻ Skip This Problem');
+    });
+
+    it('should re-enable skip button after failed replacement', async () => {
+      const user = userEvent.setup();
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      mockOnReplace = vi.fn().mockRejectedValue(new Error('Failed to replace'));
+
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={mockOnReplace} />);
+
+      const skipButton = screen.getByRole('button', { name: /skip this problem/i });
+      await user.click(skipButton);
+
+      await waitFor(() => {
+        expect(mockOnReplace).toHaveBeenCalled();
+      });
+
+      // Button should be enabled again even after error
+      await waitFor(() => {
+        expect(skipButton).not.toBeDisabled();
+      });
+
+      consoleError.mockRestore();
+    });
+
+    it('should log error to console when replacement fails', async () => {
+      const user = userEvent.setup();
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const error = new Error('Failed to replace');
+
+      mockOnReplace = vi.fn().mockRejectedValue(error);
+
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={mockOnReplace} />);
+
+      const skipButton = screen.getByRole('button', { name: /skip this problem/i });
+      await user.click(skipButton);
+
+      await waitFor(() => {
+        expect(consoleError).toHaveBeenCalledWith('Failed to replace problem:', error);
+      });
+
+      consoleError.mockRestore();
+    });
+
+    it('should have proper styling for skip button', () => {
+      render(<ProblemCard problem={baseProblem} onComplete={vi.fn()} onReplace={mockOnReplace} />);
+
+      const skipButton = screen.getByRole('button', { name: /skip this problem/i });
+
+      // Check for secondary styling classes
+      expect(skipButton).toHaveClass('text-gray-600');
+      expect(skipButton).toHaveClass('bg-gray-50');
+      expect(skipButton).toHaveClass('border-gray-300');
     });
   });
 
@@ -355,7 +542,7 @@ describe('ProblemCard', () => {
         name: 'This is a Very Long Problem Name That Should Still Display Correctly Without Breaking the Layout',
       };
 
-      render(<ProblemCard problem={longNameProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={longNameProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.getByText(longNameProblem.name)).toBeInTheDocument();
     });
@@ -366,7 +553,7 @@ describe('ProblemCard', () => {
         name: 'Problem: "Array & String" [Easy] (LC #1)',
       };
 
-      render(<ProblemCard problem={specialCharProblem} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={specialCharProblem} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       expect(screen.getByText(specialCharProblem.name)).toBeInTheDocument();
     });
@@ -376,11 +563,11 @@ describe('ProblemCard', () => {
       const problem1 = { ...baseProblem, id: 100 };
       const problem2 = { ...baseProblem, id: 200 };
 
-      const { rerender } = render(<ProblemCard problem={problem1} onComplete={mockOnComplete} />);
+      const { rerender } = render(<ProblemCard problem={problem1} onComplete={mockOnComplete} onReplace={vi.fn()} />);
 
       expect(screen.getByText('Two Sum')).toBeInTheDocument();
 
-      rerender(<ProblemCard problem={problem2} onComplete={mockOnComplete} />);
+      rerender(<ProblemCard problem={problem2} onComplete={mockOnComplete} onReplace={vi.fn()} />);
 
       expect(screen.getByText('Two Sum')).toBeInTheDocument();
     });
@@ -391,7 +578,7 @@ describe('ProblemCard', () => {
         link: 'https://leetcode.com/problems/two-sum?envType=study-plan&id=algorithms',
       };
 
-      render(<ProblemCard problem={problemWithQueryParams} onComplete={vi.fn()} />);
+      render(<ProblemCard problem={problemWithQueryParams} onComplete={vi.fn()} onReplace={vi.fn()} />);
 
       const link = screen.getByRole('link', { name: /view problem/i });
       expect(link).toHaveAttribute('href', problemWithQueryParams.link);

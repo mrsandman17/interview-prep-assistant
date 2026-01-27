@@ -4,6 +4,7 @@
  * Endpoints:
  * - GET    /api/daily              - Get today's selection (creates if needed)
  * - POST   /api/daily/:problemId/complete - Mark problem completed with color result
+ * - POST   /api/daily/:problemId/replace  - Replace a specific problem in today's selection
  * - POST   /api/daily/refresh      - Generate new selection for today
  */
 
@@ -20,7 +21,7 @@ import type {
   CompleteProblemResponse,
   ProblemWithSelection,
 } from './api-types.js';
-import { selectDailyProblems } from '../services/selection.js';
+import { selectDailyProblems, selectSingleProblem } from '../services/selection.js';
 
 export const dailyRouter = Router();
 
@@ -370,6 +371,151 @@ dailyRouter.post('/:problemId/complete', (req: Request, res: Response) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to complete problem',
+    });
+  }
+});
+
+/**
+ * POST /api/daily/:problemId/replace
+ * Replace a specific problem in today's selection with a new one
+ *
+ * This endpoint allows users to skip a problem they don't want to do right now
+ * while keeping the rest of their daily selection intact.
+ *
+ * Validation:
+ * - Problem must exist
+ * - Problem must be in today's selection
+ * - Problem must NOT be completed (can't replace completed problems)
+ *
+ * Selection Logic:
+ * - Uses selectSingleProblem() with priority: NEW → REVIEW → MASTERED
+ * - Excludes problems already in today's selection
+ * - Returns 400 if no eligible problems available
+ *
+ * Transaction:
+ * - Deletes old daily_selection entry
+ * - Inserts new daily_selection entry with replacement problem
+ *
+ * @param {number} problemId - Problem ID to replace
+ * @returns {ReplaceProblemResponse} { problem: ProblemWithSelection }
+ */
+dailyRouter.post('/:problemId/replace', (req: Request, res: Response) => {
+  try {
+    const { problemId } = req.params;
+
+    if (!problemId) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: 'Problem ID is required',
+      });
+      return;
+    }
+
+    const problemIdNum = parseInt(problemId, 10);
+
+    if (isNaN(problemIdNum)) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: 'Problem ID must be a number',
+      });
+      return;
+    }
+
+    const db = getDatabase();
+    const today = getTodayDate();
+
+    // Check if problem exists and is in today's selection
+    const checkStmt = db.prepare(`
+      SELECT
+        p.id,
+        ds.id as selectionId,
+        ds.completed
+      FROM problems p
+      LEFT JOIN daily_selections ds ON p.id = ds.problem_id AND ds.selected_date = ?
+      WHERE p.id = ?
+    `);
+
+    const problemCheck = checkStmt.get(today, problemIdNum) as
+      | { id: number; selectionId: number | null; completed: number | null }
+      | undefined;
+
+    if (!problemCheck) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Problem not found',
+      });
+      return;
+    }
+
+    if (!problemCheck.selectionId) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: 'Problem is not in today\'s selection',
+      });
+      return;
+    }
+
+    if (problemCheck.completed === 1) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: 'Cannot replace completed problem',
+      });
+      return;
+    }
+
+    // Select a replacement problem
+    const replacementProblem = selectSingleProblem(db);
+
+    if (!replacementProblem) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: 'No eligible problems available for replacement',
+      });
+      return;
+    }
+
+    // Use transaction to ensure atomicity
+    const replaceTransaction = db.transaction(() => {
+      // Delete old selection entry
+      const deleteStmt = db.prepare(`
+        DELETE FROM daily_selections
+        WHERE id = ?
+      `);
+      deleteStmt.run(problemCheck.selectionId);
+
+      // Insert new selection entry
+      const insertStmt = db.prepare(`
+        INSERT INTO daily_selections (problem_id, selected_date, completed)
+        VALUES (?, ?, 0)
+      `);
+      insertStmt.run(replacementProblem.id, today);
+
+      // Fetch the replacement problem with selection details
+      const selectStmt = db.prepare(`
+        SELECT
+          p.*,
+          ds.id as selectionId,
+          ds.completed
+        FROM daily_selections ds
+        JOIN problems p ON ds.problem_id = p.id
+        WHERE ds.problem_id = ? AND ds.selected_date = ?
+      `);
+
+      const row = selectStmt.get(replacementProblem.id, today) as any;
+      return {
+        ...row,
+        completed: row.completed === 1
+      } as ProblemWithSelection;
+    });
+
+    const newProblem = replaceTransaction();
+
+    res.status(200).json({ problem: newProblem });
+  } catch (error) {
+    console.error('Error replacing problem:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to replace problem',
     });
   }
 });

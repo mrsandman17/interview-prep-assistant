@@ -9,7 +9,7 @@ import { ProblemCard } from '../components/ProblemCard';
 import type { ProblemColor } from '../api/types';
 
 export function Dashboard() {
-  const { problems, loading, error, completeProblem, refreshSelection } = useDaily();
+  const { problems, loading, error, completeProblem, refreshSelection, replaceProblem } = useDaily();
   const { stats, loading: statsLoading, error: statsError, refetch: refetchStats } = useStats();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -31,6 +31,15 @@ export function Dashboard() {
       console.error('Failed to refresh selection:', err);
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleReplaceProblem = async (problemId: number) => {
+    try {
+      await replaceProblem(problemId);
+      // No need to refetch stats - total problem count doesn't change
+    } catch (err) {
+      console.error('Failed to replace problem:', err);
     }
   };
 
@@ -136,6 +145,7 @@ export function Dashboard() {
               key={problem.id}
               problem={problem}
               onComplete={handleCompleteProblem}
+              onReplace={handleReplaceProblem}
             />
           ))}
         </div>

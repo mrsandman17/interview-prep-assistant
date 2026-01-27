@@ -141,6 +141,69 @@ export function getEligibleMastered(db: Database.Database): Problem[] {
 }
 
 /**
+ * Selects a single replacement problem using priority-based selection
+ *
+ * This function implements the same eligibility rules as the main selection
+ * algorithm but returns only ONE problem. Used for individual problem replacement.
+ *
+ * Algorithm:
+ * 1. Query eligible problems from all three pools (NEW, REVIEW, MASTERED)
+ * 2. Apply priority order: NEW → REVIEW → MASTERED
+ * 3. Randomly select one problem from the highest priority non-empty pool
+ * 4. Return the selected problem or null if no eligible problems exist
+ *
+ * Priority Rationale:
+ * - NEW problems are prioritized to encourage learning progression
+ * - REVIEW problems provide necessary reinforcement
+ * - MASTERED problems offer maintenance practice when other pools are empty
+ *
+ * The function excludes problems already selected today, ensuring users
+ * don't get duplicate problems in their daily selection.
+ *
+ * @param db - better-sqlite3 database instance
+ * @returns Single problem or null if no eligible problems available
+ *
+ * @example
+ * ```typescript
+ * const db = getDatabase();
+ * const replacement = selectSingleProblem(db);
+ *
+ * if (replacement) {
+ *   console.log(`Selected replacement: ${replacement.name}`);
+ * } else {
+ *   console.log('No eligible problems available');
+ * }
+ * ```
+ */
+export function selectSingleProblem(db: Database.Database): Problem | null {
+  // Get eligible problems from each pool
+  const newPool = getEligibleNew(db);
+  const reviewPool = getEligibleReview(db);
+  const masteredPool = getEligibleMastered(db);
+
+  // Priority order: NEW → REVIEW → MASTERED
+  // Select from the first non-empty pool
+  let selectedPool: Problem[] | null = null;
+
+  if (newPool.length > 0) {
+    selectedPool = newPool;
+  } else if (reviewPool.length > 0) {
+    selectedPool = reviewPool;
+  } else if (masteredPool.length > 0) {
+    selectedPool = masteredPool;
+  }
+
+  // If no eligible problems in any pool, return null
+  if (!selectedPool || selectedPool.length === 0) {
+    return null;
+  }
+
+  // Randomly select one problem from the chosen pool
+  const randomIndex = Math.floor(Math.random() * selectedPool.length);
+  return selectedPool[randomIndex];
+}
+
+/**
  * Randomly selects N items from an array without replacement
  *
  * Uses Fisher-Yates shuffle algorithm for unbiased random selection.

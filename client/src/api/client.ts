@@ -126,6 +126,15 @@ export const dailyApi = {
       method: 'POST',
     });
   },
+
+  /**
+   * Replace a specific problem in today's selection
+   */
+  replaceProblem: async (problemId: number): Promise<{ problem: DailyProblem }> => {
+    return fetchJSON<{ problem: DailyProblem }>(`/api/daily/${problemId}/replace`, {
+      method: 'POST',
+    });
+  },
 };
 
 /**
