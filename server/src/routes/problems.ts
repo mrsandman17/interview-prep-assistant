@@ -21,6 +21,7 @@ import type {
   ImportResult,
 } from './api-types.js';
 import { parseCSV } from '../services/csv-parser.js';
+import { generateCSV } from '../services/csv-generator.js';
 
 export const problemsRouter = Router();
 
@@ -347,6 +348,46 @@ problemsRouter.post('/import', (req: Request, res: Response) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to import problems',
+    });
+  }
+});
+
+/**
+ * GET /api/problems/export
+ * Export all problems as CSV
+ *
+ * @returns CSV file with all problems
+ */
+problemsRouter.get('/export', (req: Request, res: Response) => {
+  try {
+    const db = getDatabase();
+
+    // Fetch all problems ordered by creation date (newest first)
+    const query = 'SELECT * FROM problems ORDER BY created_at DESC';
+    const stmt = db.prepare(query);
+    const problems = stmt.all() as Problem[];
+
+    // Generate CSV content
+    const csvContent = generateCSV(problems);
+
+    // Generate filename with current date
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const filename = `leetcode-problems-${today}.csv`;
+    // Sanitize filename to prevent header injection (RFC 2183 compliance)
+    const safeFilename = filename.replace(/[^\w.-]/g, '_');
+
+    // Set response headers
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
+
+    // Send CSV content
+    res.status(200).send(csvContent);
+  } catch (error) {
+    console.error('Error exporting problems:', error);
+    res.setHeader('Content-Type', 'application/json'); // Explicit JSON content type for errors
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to export problems',
     });
   }
 });

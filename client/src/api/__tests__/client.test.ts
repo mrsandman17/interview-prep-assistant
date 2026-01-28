@@ -256,6 +256,101 @@ describe('API Client', () => {
         await expect(problemsApi.update(1, {})).rejects.toThrow('Invalid update data');
       });
     });
+
+    describe('exportCSV', () => {
+      it('should export problems as CSV string successfully', async () => {
+        const mockCSVContent = 'name,link,color,key_insight\nTwo Sum,https://leetcode.com/problems/two-sum,gray,Use hash map\nValid Parentheses,https://leetcode.com/problems/valid-parentheses,orange,Use a stack';
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          text: async () => mockCSVContent,
+        });
+
+        const result = await problemsApi.exportCSV();
+
+        expect(mockFetch).toHaveBeenCalledWith('/api/problems/export', {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        expect(result).toBe(mockCSVContent);
+      });
+
+      it('should call response.text() not response.json() for CSV', async () => {
+        const mockCSVContent = 'name,link,color,key_insight\nTwo Sum,https://leetcode.com/problems/two-sum,gray,';
+
+        const textMock = vi.fn().mockResolvedValue(mockCSVContent);
+        const jsonMock = vi.fn();
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          text: textMock,
+          json: jsonMock,
+        });
+
+        await problemsApi.exportCSV();
+
+        expect(textMock).toHaveBeenCalledTimes(1);
+        expect(jsonMock).not.toHaveBeenCalled();
+      });
+
+      it('should handle empty CSV export (no problems)', async () => {
+        const mockCSVContent = 'name,link,color,key_insight';
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          text: async () => mockCSVContent,
+        });
+
+        const result = await problemsApi.exportCSV();
+
+        expect(result).toBe(mockCSVContent);
+        expect(result).toContain('name,link,color,key_insight');
+      });
+
+      it('should handle export errors with 500 status', async () => {
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          json: async () => ({ error: 'Failed to export problems' }),
+        });
+
+        await expect(problemsApi.exportCSV()).rejects.toThrow('Failed to export problems');
+      });
+
+      it('should handle export errors with generic fallback message', async () => {
+        mockFetch.mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          json: async () => {
+            throw new Error('Invalid JSON');
+          },
+        });
+
+        await expect(problemsApi.exportCSV()).rejects.toThrow('HTTP 500: Internal Server Error');
+      });
+
+      it('should handle network errors during export', async () => {
+        mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+        await expect(problemsApi.exportCSV()).rejects.toThrow('Network error');
+      });
+
+      it('should preserve CSV formatting with special characters', async () => {
+        const mockCSVContent = 'name,link,color,key_insight\n"Problem, with comma","https://leetcode.com/problems/test",green,"Use ""quotes"" properly"';
+
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          text: async () => mockCSVContent,
+        });
+
+        const result = await problemsApi.exportCSV();
+
+        expect(result).toBe(mockCSVContent);
+        expect(result).toContain('"Problem, with comma"');
+        expect(result).toContain('"Use ""quotes"" properly"');
+      });
+    });
   });
 
   describe('dailyApi', () => {
