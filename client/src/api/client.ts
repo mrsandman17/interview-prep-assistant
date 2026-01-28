@@ -58,9 +58,17 @@ export const problemsApi = {
    * Create a new problem
    */
   create: async (data: CreateProblemRequest): Promise<Problem> => {
+    // Transform camelCase to snake_case for backend
+    const payload = {
+      name: data.name,
+      link: data.link,
+      ...(data.keyInsight && { key_insight: data.keyInsight }),
+      ...(data.color && { color: data.color }),
+    };
+
     return fetchJSON<Problem>('/api/problems', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   },
 
@@ -72,6 +80,24 @@ export const problemsApi = {
       method: 'POST',
       body: JSON.stringify({ csvContent } as ImportProblemsRequest),
     });
+  },
+
+  /**
+   * Export all problems as CSV
+   */
+  exportCSV: async (): Promise<string> => {
+    const response = await fetch('/api/problems/export', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json().catch(() => ({
+        error: `HTTP ${response.status}: ${response.statusText}`,
+      }));
+      throw new Error(error.error || `Failed to export problems: HTTP ${response.status}`);
+    }
+
+    return response.text();
   },
 
   /**

@@ -677,3 +677,325 @@ describe('PATCH /api/problems/:id', () => {
     expect(response.status).toBe(200);
   });
 });
+
+describe('GET /api/problems/export', () => {
+  it('returns 200 with CSV content-type header', async () => {
+    const db = getDatabase();
+    db.prepare(`INSERT INTO problems (name, link, color) VALUES (?, ?, ?)`).run(
+      'Two Sum',
+      'https://leetcode.com/problems/two-sum',
+      'gray'
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toBe('text/csv; charset=utf-8');
+  });
+
+  it('returns CSV with correct Content-Disposition header with date-stamped filename', async () => {
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-disposition']).toMatch(/^attachment; filename="leetcode-problems-\d{4}-\d{2}-\d{2}\.csv"$/);
+  });
+
+  it('returns headers only when database is empty', async () => {
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toBe('Problem,Link,Color,LastReviewed,KeyInsight\n');
+  });
+
+  it('exports single problem with all fields', async () => {
+    const db = getDatabase();
+    db.prepare(`INSERT INTO problems (name, link, color, key_insight, last_reviewed) VALUES (?, ?, ?, ?, ?)`).run(
+      'Valid Parentheses',
+      'https://leetcode.com/problems/valid-parentheses',
+      'yellow',
+      'Use a stack',
+      '2024-01-15'
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    const lines = response.text.split('\n');
+    expect(lines[0]).toBe('Problem,Link,Color,LastReviewed,KeyInsight');
+    expect(lines[1]).toBe('Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,2024-01-15,Use a stack');
+  });
+
+  it('exports single problem with null key_insight and last_reviewed', async () => {
+    const db = getDatabase();
+    db.prepare(`INSERT INTO problems (name, link, color) VALUES (?, ?, ?)`).run(
+      'Two Sum',
+      'https://leetcode.com/problems/two-sum',
+      'gray'
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    const lines = response.text.split('\n');
+    expect(lines[1]).toBe('Two Sum,https://leetcode.com/problems/two-sum,gray,,');
+  });
+
+  it('exports multiple problems with various data', async () => {
+    const db = getDatabase();
+    db.prepare(`INSERT INTO problems (name, link, color, created_at) VALUES (?, ?, ?, ?)`).run(
+      'Two Sum',
+      'https://leetcode.com/problems/two-sum',
+      'gray',
+      '2024-01-01T10:00:00.000Z'
+    );
+    db.prepare(`INSERT INTO problems (name, link, color, key_insight, last_reviewed, created_at) VALUES (?, ?, ?, ?, ?, ?)`).run(
+      'Valid Parentheses',
+      'https://leetcode.com/problems/valid-parentheses',
+      'yellow',
+      'Use a stack',
+      '2024-01-15',
+      '2024-01-02T10:00:00.000Z'
+    );
+    db.prepare(`INSERT INTO problems (name, link, color, key_insight, last_reviewed, created_at) VALUES (?, ?, ?, ?, ?, ?)`).run(
+      'Merge Intervals',
+      'https://leetcode.com/problems/merge-intervals',
+      'green',
+      'Sort by start time',
+      '2024-01-20',
+      '2024-01-03T10:00:00.000Z'
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    const lines = response.text.split('\n').filter(line => line.length > 0);
+    expect(lines).toHaveLength(4); // 1 header + 3 data rows
+    expect(lines[0]).toBe('Problem,Link,Color,LastReviewed,KeyInsight');
+    // Problems should be ordered by creation date (newest first)
+    expect(lines[1]).toContain('Merge Intervals');
+    expect(lines[2]).toContain('Valid Parentheses');
+    expect(lines[3]).toContain('Two Sum');
+  });
+
+  it('exports problems with proper CSV escaping for quotes', async () => {
+    const db = getDatabase();
+    db.prepare(`INSERT INTO problems (name, link, color, key_insight) VALUES (?, ?, ?, ?)`).run(
+      'Find "Best" Solution',
+      'https://leetcode.com/problems/test',
+      'gray',
+      'Use "dynamic programming"'
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    const text = response.text;
+    // Quotes should be escaped by doubling them
+    expect(text).toContain('"Find ""Best"" Solution"');
+    expect(text).toContain('"Use ""dynamic programming"""');
+  });
+
+  it('exports problems with proper CSV escaping for commas', async () => {
+    const db = getDatabase();
+    db.prepare(`INSERT INTO problems (name, link, color, key_insight) VALUES (?, ?, ?, ?)`).run(
+      'Problem A, B, C',
+      'https://leetcode.com/problems/test',
+      'gray',
+      'Use arrays, maps, and sets'
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    const text = response.text;
+    // Fields with commas should be wrapped in quotes
+    expect(text).toContain('"Problem A, B, C"');
+    expect(text).toContain('"Use arrays, maps, and sets"');
+  });
+
+  it('exports problems with proper CSV escaping for newlines', async () => {
+    const db = getDatabase();
+    db.prepare(`INSERT INTO problems (name, link, color, key_insight) VALUES (?, ?, ?, ?)`).run(
+      'Multi\nLine\nName',
+      'https://leetcode.com/problems/test',
+      'gray',
+      'Step 1: Sort\nStep 2: Iterate'
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    const text = response.text;
+    // Fields with newlines should be wrapped in quotes
+    expect(text).toContain('"Multi\nLine\nName"');
+    expect(text).toContain('"Step 1: Sort\nStep 2: Iterate"');
+  });
+
+  it('prevents CSV injection by prefixing formulas with single quote', async () => {
+    const db = getDatabase();
+    db.prepare(`INSERT INTO problems (name, link, color, key_insight) VALUES (?, ?, ?, ?)`).run(
+      '=SUM(A1:A10)',
+      'https://leetcode.com/problems/test1',
+      'gray',
+      null
+    );
+    db.prepare(`INSERT INTO problems (name, link, color, key_insight) VALUES (?, ?, ?, ?)`).run(
+      'Normal Name',
+      'https://leetcode.com/problems/test2',
+      'gray',
+      '+2+2'
+    );
+    db.prepare(`INSERT INTO problems (name, link, color, key_insight) VALUES (?, ?, ?, ?)`).run(
+      '-1234',
+      'https://leetcode.com/problems/test3',
+      'gray',
+      null
+    );
+    db.prepare(`INSERT INTO problems (name, link, color, key_insight) VALUES (?, ?, ?, ?)`).run(
+      'Safe Name',
+      'https://leetcode.com/problems/test4',
+      'gray',
+      '@IMPORTDATA("malicious.com")'
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    const text = response.text;
+    // Formulas should be prefixed with single quote
+    expect(text).toContain("'=SUM(A1:A10)");
+    expect(text).toContain("'+2+2");
+    expect(text).toContain("'-1234");
+    expect(text).toContain("'@IMPORTDATA");
+  });
+
+  it('exports all color types correctly', async () => {
+    const db = getDatabase();
+    db.prepare(`INSERT INTO problems (name, link, color) VALUES (?, ?, ?)`).run(
+      'Gray Problem',
+      'https://leetcode.com/problems/gray',
+      'gray'
+    );
+    db.prepare(`INSERT INTO problems (name, link, color) VALUES (?, ?, ?)`).run(
+      'Orange Problem',
+      'https://leetcode.com/problems/orange',
+      'orange'
+    );
+    db.prepare(`INSERT INTO problems (name, link, color) VALUES (?, ?, ?)`).run(
+      'Yellow Problem',
+      'https://leetcode.com/problems/yellow',
+      'yellow'
+    );
+    db.prepare(`INSERT INTO problems (name, link, color) VALUES (?, ?, ?)`).run(
+      'Green Problem',
+      'https://leetcode.com/problems/green',
+      'green'
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    const text = response.text;
+    expect(text).toContain(',gray,');
+    expect(text).toContain(',orange,');
+    expect(text).toContain(',yellow,');
+    expect(text).toContain(',green,');
+  });
+
+  it('returns 500 on database error', async () => {
+    // Close the database to force an error
+    closeDatabase();
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(500);
+    expect(response.body.error).toBe('Internal Server Error');
+    expect(response.body.message).toContain('Failed to export problems');
+
+    // Reinitialize the database for subsequent tests
+    initializeDatabase(':memory:');
+  });
+
+  it('exports problems in correct creation date order (newest first)', async () => {
+    const db = getDatabase();
+    db.prepare(`INSERT INTO problems (name, link, color, created_at) VALUES (?, ?, ?, ?)`).run(
+      'First Problem',
+      'https://leetcode.com/problems/first',
+      'gray',
+      '2024-01-01T10:00:00.000Z'
+    );
+    db.prepare(`INSERT INTO problems (name, link, color, created_at) VALUES (?, ?, ?, ?)`).run(
+      'Second Problem',
+      'https://leetcode.com/problems/second',
+      'gray',
+      '2024-01-02T10:00:00.000Z'
+    );
+    db.prepare(`INSERT INTO problems (name, link, color, created_at) VALUES (?, ?, ?, ?)`).run(
+      'Third Problem',
+      'https://leetcode.com/problems/third',
+      'gray',
+      '2024-01-03T10:00:00.000Z'
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    const lines = response.text.split('\n').filter(line => line.length > 0);
+    // Newest first
+    expect(lines[1]).toContain('Third Problem');
+    expect(lines[2]).toContain('Second Problem');
+    expect(lines[3]).toContain('First Problem');
+  });
+
+  it('handles empty string key_insight correctly', async () => {
+    const db = getDatabase();
+    db.prepare(`INSERT INTO problems (name, link, color, key_insight) VALUES (?, ?, ?, ?)`).run(
+      'Test Problem',
+      'https://leetcode.com/problems/test',
+      'gray',
+      ''
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    const lines = response.text.split('\n');
+    // Empty string should result in empty CSV field
+    expect(lines[1]).toBe('Test Problem,https://leetcode.com/problems/test,gray,,');
+  });
+
+  it('handles very long field values', async () => {
+    const db = getDatabase();
+    const longName = 'A'.repeat(500);
+    const longUrl = 'https://leetcode.com/problems/' + 'a'.repeat(2000);
+    const longInsight = 'This is a very detailed insight. '.repeat(100);
+
+    db.prepare(`INSERT INTO problems (name, link, color, key_insight) VALUES (?, ?, ?, ?)`).run(
+      longName,
+      longUrl,
+      'gray',
+      longInsight
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain(longName);
+    expect(response.text).toContain(longUrl);
+    expect(response.text).toContain(longInsight);
+  });
+
+  it('returns CSV ending with newline', async () => {
+    const db = getDatabase();
+    db.prepare(`INSERT INTO problems (name, link, color) VALUES (?, ?, ?)`).run(
+      'Test',
+      'https://leetcode.com/problems/test',
+      'gray'
+    );
+
+    const response = await request(app).get('/api/problems/export');
+
+    expect(response.status).toBe(200);
+    expect(response.text.endsWith('\n')).toBe(true);
+  });
+});

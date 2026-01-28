@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo, Component } from 'react';
 import { problemsApi } from '../api/client';
-import type { Problem, ProblemColor } from '../api/types';
+import type { Problem, ProblemColor, CreateProblemRequest } from '../api/types';
 import { ImportModal } from '../components/ImportModal';
 import { FilterBar } from '../components/FilterBar';
 import { ProblemsTable } from '../components/ProblemsTable';
@@ -65,6 +65,9 @@ function AllProblemsContent() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importSuccess, setImportSuccess] = useState<{ imported: number; skipped: number } | null>(null);
 
+  // Export state
+  const [exportSuccess, setExportSuccess] = useState(false);
+
   // Add problem modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addSuccess, setAddSuccess] = useState<string | null>(null);
@@ -114,6 +117,34 @@ function AllProblemsContent() {
     fetchProblems();
   };
 
+  const handleExport = async () => {
+    try {
+      setError(null);
+      const csvContent = await problemsApi.exportCSV();
+
+      // Create a Blob and trigger download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Generate filename with current date (format: problems-YYYY-MM-DD.csv)
+      const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      link.download = `problems-${date}.csv`;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      // Show success message
+      setExportSuccess(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to export problems');
+    }
+  };
+
   // Clear import success message after 5 seconds
   useEffect(() => {
     if (importSuccess) {
@@ -122,11 +153,19 @@ function AllProblemsContent() {
     }
   }, [importSuccess]);
 
+  // Clear export success message after 3 seconds
+  useEffect(() => {
+    if (exportSuccess) {
+      const timeoutId = setTimeout(() => setExportSuccess(false), 3000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [exportSuccess]);
+
   const handleEdit = (problem: Problem) => {
     setEditingProblem(problem);
   };
 
-  const handleCreate = async (data: { name: string; link: string; keyInsight?: string }) => {
+  const handleCreate = async (data: CreateProblemRequest) => {
     try {
       const newProblem = await problemsApi.create(data);
 
@@ -217,6 +256,22 @@ function AllProblemsContent() {
             </svg>
             <span>Import CSV</span>
           </button>
+          <button
+            onClick={handleExport}
+            disabled={isLoading || problems.length === 0}
+            className="
+              px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium
+              hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
+              disabled:bg-gray-300 disabled:cursor-not-allowed
+              transition-colors duration-200
+              flex items-center space-x-2
+            "
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 11l3 3m0 0l3-3m-3 3V6" />
+            </svg>
+            <span>Export CSV</span>
+          </button>
         </div>
       </div>
 
@@ -254,6 +309,23 @@ function AllProblemsContent() {
             <div className="ml-3">
               <p className="text-sm font-medium text-green-800">
                 Successfully added "{addSuccess}"!
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {exportSuccess && (
+        <div className="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-green-800">
+                Successfully exported {problems.length} problem{problems.length !== 1 ? 's' : ''} to CSV!
               </p>
             </div>
           </div>

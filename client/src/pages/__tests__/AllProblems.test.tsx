@@ -15,6 +15,7 @@ vi.mock('../../api/client', () => ({
   problemsApi: {
     getAll: vi.fn(),
     update: vi.fn(),
+    exportCSV: vi.fn(),
   },
 }));
 
@@ -40,6 +41,9 @@ const mockProblems: Problem[] = [
     attemptCount: 5,
   },
 ];
+
+// Store original createElement before any mocking
+const originalCreateElement = document.createElement.bind(document);
 
 describe('AllProblems', () => {
   beforeEach(() => {
@@ -198,6 +202,260 @@ describe('AllProblems', () => {
       const importButton = screen.getByRole('button', { name: /import csv/i });
       expect(importButton).toBeInTheDocument();
       expect(importButton).toHaveAccessibleName();
+    });
+  });
+
+  describe('Export CSV Functionality', () => {
+    beforeEach(() => {
+      // Mock URL.createObjectURL and URL.revokeObjectURL
+      global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+      global.URL.revokeObjectURL = vi.fn();
+    });
+
+    describe('Export CSV Button', () => {
+      it('should render Export CSV button with correct text', async () => {
+        render(<AllProblems />);
+
+        await waitFor(() => {
+          expect(screen.getByText('Two Sum')).toBeInTheDocument();
+        });
+
+        const exportButton = screen.getByRole('button', { name: /export csv/i });
+        expect(exportButton).toBeInTheDocument();
+        expect(exportButton).toHaveTextContent(/export csv/i);
+      });
+
+      it('should disable Export CSV button when no problems exist', async () => {
+        vi.mocked(problemsApi.getAll).mockResolvedValue([]);
+
+        render(<AllProblems />);
+
+        await waitFor(() => {
+          expect(screen.queryByText('Loading problems')).not.toBeInTheDocument();
+        });
+
+        const exportButton = screen.getByRole('button', { name: /export csv/i });
+        expect(exportButton).toBeDisabled();
+      });
+
+      it('should disable Export CSV button when loading', () => {
+        render(<AllProblems />);
+
+        const exportButton = screen.getByRole('button', { name: /export csv/i });
+        expect(exportButton).toBeDisabled();
+      });
+
+      it('should enable Export CSV button when problems are loaded', async () => {
+        render(<AllProblems />);
+
+        await waitFor(() => {
+          expect(screen.getByText('Two Sum')).toBeInTheDocument();
+        });
+
+        const exportButton = screen.getByRole('button', { name: /export csv/i });
+        expect(exportButton).not.toBeDisabled();
+      });
+    });
+
+    describe('Export CSV Action', () => {
+      beforeEach(() => {
+        // Ensure createElement is not mocked from previous tests
+        const createElementMock = document.createElement as any;
+        if (createElementMock.mockRestore) {
+          createElementMock.mockRestore();
+        }
+      });
+
+      afterEach(() => {
+        // Clean up all mocks after each test
+        vi.useRealTimers();
+        const createElementMock = document.createElement as any;
+        if (createElementMock.mockRestore) {
+          createElementMock.mockRestore();
+        }
+      });
+
+      it('should trigger download on Export CSV button click', async () => {
+        const user = userEvent.setup();
+        const mockCSVContent = 'name,link,color,key_insight\nTwo Sum,https://leetcode.com/problems/two-sum/,gray,Use hash map';
+
+        vi.mocked(problemsApi.exportCSV).mockResolvedValue(mockCSVContent);
+
+        // Mock document.createElement to track link creation
+        const mockLinks: HTMLAnchorElement[] = [];
+        const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+          if (tagName === 'a') {
+            const link = originalCreateElement('a');
+            mockLinks.push(link);
+            return link as any;
+          }
+          return originalCreateElement(tagName) as any;
+        });
+        const appendChildSpy = vi.spyOn(document.body, 'appendChild');
+        const removeChildSpy = vi.spyOn(document.body, 'removeChild');
+        const clickSpy = vi.fn();
+
+        render(<AllProblems />);
+
+        await waitFor(() => {
+          expect(screen.getByText('Two Sum')).toBeInTheDocument();
+        });
+
+        const exportButton = screen.getByRole('button', { name: /export csv/i });
+        await user.click(exportButton);
+
+        await waitFor(() => {
+          expect(problemsApi.exportCSV).toHaveBeenCalledTimes(1);
+        });
+
+        // Verify Blob was created with correct content
+        expect(global.URL.createObjectURL).toHaveBeenCalledWith(
+          expect.any(Blob)
+        );
+
+        // Verify link creation and click
+        expect(createElementSpy).toHaveBeenCalledWith('a');
+        expect(mockLinks.length).toBeGreaterThan(0);
+        // Get the last created link (the download link)
+        const createdLink = mockLinks[mockLinks.length - 1];
+        expect(createdLink.href).toBe('blob:mock-url');
+        expect(createdLink.download).toMatch(/problems-\d{4}-\d{2}-\d{2}\.csv/);
+        expect(appendChildSpy).toHaveBeenCalledWith(createdLink);
+        expect(removeChildSpy).toHaveBeenCalledWith(createdLink);
+        expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+
+        // Cleanup
+        createElementSpy.mockRestore();
+        appendChildSpy.mockRestore();
+        removeChildSpy.mockRestore();
+      });
+
+      it('should show success message after successful export', async () => {
+        const user = userEvent.setup();
+        const mockCSVContent = 'name,link,color,key_insight\nTwo Sum,https://leetcode.com/problems/two-sum/,gray,Use hash map';
+
+        vi.mocked(problemsApi.exportCSV).mockResolvedValue(mockCSVContent);
+
+        // Mock link creation to avoid actual download
+        vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+          const element = originalCreateElement(tagName);
+          if (tagName === 'a') {
+            vi.spyOn(element as HTMLAnchorElement, 'click').mockImplementation(() => {});
+          }
+          return element as any;
+        });
+
+        render(<AllProblems />);
+
+        await waitFor(() => {
+          expect(screen.getByText('Two Sum')).toBeInTheDocument();
+        });
+
+        const exportButton = screen.getByRole('button', { name: /export csv/i });
+        await user.click(exportButton);
+
+        await waitFor(() => {
+          expect(screen.getByText(/successfully exported/i)).toBeInTheDocument();
+        });
+
+        // Verify success message mentions problem count
+        expect(screen.getByText(/2 problems/i)).toBeInTheDocument();
+
+        // Cleanup: restore createElement to avoid affecting other tests
+        vi.mocked(document.createElement).mockRestore();
+      });
+
+      it('should auto-dismiss success message after 3 seconds', async () => {
+        try {
+          vi.useFakeTimers();
+          const user = userEvent.setup({ delay: null });
+          const mockCSVContent = 'name,link,color,key_insight\nTwo Sum,https://leetcode.com/problems/two-sum/,gray,Use hash map';
+
+          vi.mocked(problemsApi.exportCSV).mockResolvedValue(mockCSVContent);
+
+          // Mock link creation
+          vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+            const element = originalCreateElement(tagName);
+            if (tagName === 'a') {
+              vi.spyOn(element as HTMLAnchorElement, 'click').mockImplementation(() => {});
+            }
+            return element as any;
+          });
+
+          render(<AllProblems />);
+
+          // Temporarily switch to real timers for async operations
+          vi.useRealTimers();
+
+          await waitFor(() => {
+            expect(screen.getByText('Two Sum')).toBeInTheDocument();
+          });
+
+          const exportButton = screen.getByRole('button', { name: /export csv/i });
+          await user.click(exportButton);
+
+          await waitFor(() => {
+            expect(screen.getByText(/successfully exported/i)).toBeInTheDocument();
+          });
+
+          // Switch back to fake timers to test the timeout
+          vi.useFakeTimers();
+
+          // Fast-forward time by 3 seconds and run all timers
+          await vi.advanceTimersByTimeAsync(3000);
+
+          // Switch back to real timers
+          vi.useRealTimers();
+
+          // Check that the message is gone
+          expect(screen.queryByText(/successfully exported/i)).not.toBeInTheDocument();
+        } finally {
+          vi.useRealTimers();
+          // Cleanup: restore createElement to avoid affecting other tests
+          const createElementMock = document.createElement as any;
+          if (createElementMock.mockRestore) {
+            createElementMock.mockRestore();
+          }
+        }
+      });
+
+      it('should handle export errors gracefully', async () => {
+        const user = userEvent.setup();
+
+        vi.mocked(problemsApi.exportCSV).mockRejectedValue(new Error('Export failed'));
+
+        render(<AllProblems />);
+
+        await waitFor(() => {
+          expect(screen.getByText('Two Sum')).toBeInTheDocument();
+        });
+
+        const exportButton = screen.getByRole('button', { name: /export csv/i });
+        await user.click(exportButton);
+
+        await waitFor(() => {
+          expect(screen.getByText(/export failed/i)).toBeInTheDocument();
+        });
+      });
+
+      it('should show generic error message when API error has no message', async () => {
+        const user = userEvent.setup();
+
+        vi.mocked(problemsApi.exportCSV).mockRejectedValue(new Error());
+
+        render(<AllProblems />);
+
+        await waitFor(() => {
+          expect(screen.getByText('Two Sum')).toBeInTheDocument();
+        });
+
+        const exportButton = screen.getByRole('button', { name: /export csv/i });
+        await user.click(exportButton);
+
+        await waitFor(() => {
+          expect(screen.getByText(/failed to export problems/i)).toBeInTheDocument();
+        });
+      });
     });
   });
 });
