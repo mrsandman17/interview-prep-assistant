@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Secret scanning with gitleaks
+echo "🔍 Scanning for secrets with gitleaks..."
+
+if ! command -v gitleaks &> /dev/null; then
+  echo "❌ ERROR: gitleaks not found in PATH"
+  echo "📦 Install: brew install gitleaks"
+  echo "🔗 Or download: https://github.com/gitleaks/gitleaks/releases"
+  exit 1
+fi
+
+# Scan only staged files (fast)
+if ! gitleaks protect --staged --verbose --redact; then
+  echo ""
+  echo "❌ SECRET DETECTED! Commit blocked."
+  echo ""
+  echo "🛠️  To fix:"
+  echo "   1. Remove the secret from your code"
+  echo "   2. Add to .gitignore if it's a file (e.g., .env.local)"
+  echo "   3. If false positive, update .gitleaks.toml allowlist"
+  echo ""
+  echo "⚠️  NEVER commit secrets. Use environment variables or config files."
+  echo ""
+  exit 1
+fi
+
+echo "✅ No secrets detected. Proceeding with commit."

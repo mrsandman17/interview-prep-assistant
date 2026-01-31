@@ -1,0 +1,9 @@
+# Gitleaks ignore file - use fingerprints to ignore false positives
+# Format: commit:file:rule:line
+# Get fingerprints from gitleaks scan output
+
+# Test commits (should be removed before making repository public)
+eaf1f901737051f3170066d835d8168365e5f934:test-leak.js:generic-api-key:1
+
+# Add false positive fingerprints below as needed
+# Example: abc123def456:config.js:generic-api-key:42
