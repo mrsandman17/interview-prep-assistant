@@ -74,6 +74,141 @@ git worktree remove ../interview-prep-assistant-feature-name
    - Remove the worktree: `git worktree remove ../interview-prep-assistant-feature-name`
    - Delete the local branch: `git branch -d feature/branch-name`
 
+## Security & Secret Protection
+
+**CRITICAL: Never commit secrets to the repository**
+
+This project uses automated secret scanning to prevent accidental exposure of sensitive data.
+
+### Secret Protection Layers
+
+1. **.gitignore**: Blocks common secret files (`.env`, `*.db`, credentials)
+2. **Pre-commit Hook**: Scans staged files for secrets before each commit (gitleaks)
+3. **Manual Scanning**: Run `npm run scan:history` to scan entire git history
+
+### What Are Secrets?
+
+**NEVER commit:**
+- API keys, tokens, passwords
+- Environment files (`.env`, `.env.local`)
+- Database files (`*.db`, `*.sqlite`)
+- Private keys (`*.pem`, `*.key`, `id_rsa`)
+- Credentials files (`secrets.json`, `credentials.json`)
+
+**Safe to commit:**
+- `.env.example` (template with placeholder values)
+- Test fixtures with mock data
+- Public configuration (e.g., port numbers, feature flags)
+
+### Using Environment Variables
+
+```bash
+# Server-side (.env file in /server, NEVER commit)
+PORT=3000
+NODE_ENV=development
+
+# Access in code
+const port = process.env.PORT || 3000;
+```
+
+**Best practices:**
+1. Create `.env.example` with placeholder values
+2. Add `.env` to `.gitignore` (already done)
+3. Document required variables in README
+4. Never hardcode secrets in source code
+
+### Pre-commit Hook Workflow
+
+**Normal workflow** (no secrets detected):
+```bash
+git add src/feature.ts
+git commit -m "Add feature"
+# 🔍 Scanning for secrets with gitleaks...
+# ✅ No secrets detected. Proceeding with commit.
+```
+
+**Blocked commit** (secret detected):
+```bash
+git add .env  # Accidentally staged secret file
+git commit -m "Update config"
+# 🔍 Scanning for secrets with gitleaks...
+# ❌ SECRET DETECTED! Commit blocked.
+#
+# 🛠️  To fix:
+#    1. Remove the secret from your code
+#    2. Add to .gitignore if it's a file
+#    3. If false positive, add fingerprint to .gitleaksignore
+```
+
+### Bypassing the Hook (EMERGENCY ONLY)
+
+```bash
+# ⚠️ NEVER bypass unless absolutely necessary
+git commit --no-verify -m "Emergency fix"
+```
+
+**When bypass is acceptable:**
+- False positive that can't be resolved immediately
+- Emergency production fix (but follow up with proper fix)
+- NEVER bypass to commit actual secrets
+
+### False Positives
+
+If gitleaks flags a non-secret, add the fingerprint to `.gitleaksignore`:
+
+```bash
+# Get the fingerprint from gitleaks output
+npm run scan:history
+# Look for: Fingerprint: abc123:file.js:rule-name:42
+
+# Add to .gitleaksignore
+echo "abc123:file.js:rule-name:42" >> .gitleaksignore
+```
+
+### Pre-Public Repository Checklist
+
+**Before making repository public:**
+1. Run history scan: `npm run scan:history`
+2. Review any flagged secrets
+3. Remove secrets from history if found (use BFG Repo-Cleaner)
+4. Verify `.gitignore` patterns are comprehensive
+5. Test pre-commit hook: `git add -A && git commit -m "test"`
+
+### Worktree Setup
+
+Git hooks are **per-worktree**, so each worktree needs setup:
+
+```bash
+# Create worktree
+git worktree add ../interview-prep-assistant-feature-name -b feature/name
+
+# Navigate to worktree
+cd ../interview-prep-assistant-feature-name
+
+# Install hooks (if not auto-installed)
+npm install  # Runs 'husky install' via prepare script
+```
+
+### Troubleshooting
+
+**Hook not running:**
+```bash
+# Reinstall hooks
+npm run prepare
+
+# Check hook exists
+ls -la .husky/pre-commit
+```
+
+**Gitleaks not found:**
+```bash
+# Install gitleaks
+brew install gitleaks
+
+# Verify installation
+gitleaks version
+```
+
 ## Development Workflow
 
 **CRITICAL: MANDATORY Subagent Usage**

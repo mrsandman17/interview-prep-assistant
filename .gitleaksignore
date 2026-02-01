@@ -1,0 +1,6 @@
+# Gitleaks ignore file - use fingerprints to ignore false positives
+# Format: commit:file:rule:line
+# Get fingerprints from gitleaks scan output
+
+# Add false positive fingerprints below as needed
+# Example: abc123def456:config.js:generic-api-key:42
