@@ -19,6 +19,23 @@ import type {
 } from './types';
 
 /**
+ * Transform snake_case object keys to camelCase
+ */
+function toCamelCase(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(toCamelCase);
+  if (typeof obj !== 'object') return obj;
+
+  const camelObj: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    // Convert snake_case to camelCase
+    const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    camelObj[camelKey] = typeof value === 'object' ? toCamelCase(value) : value;
+  }
+  return camelObj;
+}
+
+/**
  * Base fetch wrapper with error handling
  */
 async function fetchJSON<T>(
@@ -40,7 +57,8 @@ async function fetchJSON<T>(
     throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return toCamelCase(data);
 }
 
 /**
@@ -111,9 +129,16 @@ export const problemsApi = {
    * Update a problem
    */
   update: async (id: number, data: UpdateProblemRequest): Promise<Problem> => {
+    // Transform camelCase to snake_case for backend
+    const payload: any = {};
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.link !== undefined) payload.link = data.link;
+    if (data.color !== undefined) payload.color = data.color;
+    if (data.keyInsight !== undefined) payload.key_insight = data.keyInsight;
+
     return fetchJSON<Problem>(`/api/problems/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   },
 };
