@@ -141,6 +141,22 @@ export const problemsApi = {
       body: JSON.stringify(payload),
     });
   },
+
+  /**
+   * Delete a problem (cascade deletes attempts and daily selections)
+   */
+  delete: async (id: number): Promise<void> => {
+    const response = await fetch(`/api/problems/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json().catch(() => ({
+        error: `HTTP ${response.status}: ${response.statusText}`,
+      }));
+      throw new Error(error.error || `Failed to delete problem: HTTP ${response.status}`);
+    }
+  },
 };
 
 /**

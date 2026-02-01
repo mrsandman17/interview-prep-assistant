@@ -7,6 +7,7 @@
  * - POST   /api/problems/import  - Import problems from CSV
  * - GET    /api/problems/:id     - Get single problem with attempt history
  * - PATCH  /api/problems/:id     - Update a problem
+ * - DELETE /api/problems/:id     - Delete a problem and all related data
  */
 
 import { Router, Request, Response } from 'express';
@@ -615,6 +616,75 @@ problemsRouter.patch('/:id', (req: Request, res: Response) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to update problem',
+    });
+  }
+});
+
+/**
+ * DELETE /api/problems/:id
+ * Delete a problem and all related data (cascade delete)
+ *
+ * Deletes:
+ * - All attempts for this problem
+ * - All daily_selections for this problem
+ * - The problem itself
+ *
+ * Uses transaction to ensure atomicity.
+ *
+ * @param {number} id - Problem ID
+ * @returns 204 No Content on success
+ */
+problemsRouter.delete('/:id', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const problemId = parseInt(id, 10);
+
+    if (isNaN(problemId)) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: 'Problem ID must be a number',
+      });
+      return;
+    }
+
+    const db = getDatabase();
+
+    // Check if problem exists
+    const checkStmt = db.prepare('SELECT id FROM problems WHERE id = ?');
+    const exists = checkStmt.get(problemId);
+
+    if (!exists) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Problem not found',
+      });
+      return;
+    }
+
+    // Application-level cascade delete within transaction
+    const deleteProblemTransaction = db.transaction((id: number) => {
+      // Delete attempts first (child table)
+      const deleteAttemptsStmt = db.prepare('DELETE FROM attempts WHERE problem_id = ?');
+      deleteAttemptsStmt.run(id);
+
+      // Delete daily_selections (child table)
+      const deleteDailySelectionsStmt = db.prepare('DELETE FROM daily_selections WHERE problem_id = ?');
+      deleteDailySelectionsStmt.run(id);
+
+      // Delete problem (parent table)
+      const deleteProblemStmt = db.prepare('DELETE FROM problems WHERE id = ?');
+      deleteProblemStmt.run(id);
+    });
+
+    // Execute transaction
+    deleteProblemTransaction(problemId);
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting problem:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to delete problem',
     });
   }
 });

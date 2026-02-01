@@ -8,6 +8,7 @@ import type { Problem, ProblemColor } from '../api/types';
 interface ProblemsTableProps {
   problems: Problem[];
   onEdit: (problem: Problem) => void;
+  onDelete: (problem: Problem) => void;
   isLoading: boolean;
   expandedRowId: number | null;
   onRowToggle: (problemId: number) => void;
@@ -37,7 +38,7 @@ const colorOrder: Record<ProblemColor, number> = {
   green: 3,
 };
 
-export function ProblemsTable({ problems, onEdit, isLoading, expandedRowId, onRowToggle }: ProblemsTableProps) {
+export function ProblemsTable({ problems, onEdit, onDelete, isLoading, expandedRowId, onRowToggle }: ProblemsTableProps) {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -276,6 +277,16 @@ export function ProblemsTable({ problems, onEdit, isLoading, expandedRowId, onRo
                         className="text-blue-600 hover:text-blue-900 focus:outline-none focus:underline"
                       >
                         Edit
+                      </button>
+                      <span className="text-gray-300 mx-2">|</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(problem);
+                        }}
+                        className="text-red-600 hover:text-red-900 focus:outline-none focus:underline"
+                      >
+                        Delete
                       </button>
                     </td>
                   </tr>
