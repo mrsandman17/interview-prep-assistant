@@ -286,7 +286,7 @@ export function EditProblemModal({ problem, isOpen, onClose, onSave }: EditProbl
                       disabled:bg-gray-100 disabled:cursor-not-allowed
                       resize-none
                     "
-                    placeholder="Use a hash map to store complements for O(n) time complexity"
+                    placeholder="Describe your key insight or approach. Add #tags to categorize patterns (e.g., #arrays #hash-map #two-pointers)"
                   />
                 </div>
               </div>
