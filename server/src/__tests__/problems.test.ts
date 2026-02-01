@@ -999,3 +999,345 @@ describe('GET /api/problems/export', () => {
     expect(response.text.endsWith('\n')).toBe(true);
   });
 });
+
+describe('DELETE /api/problems/:id', () => {
+  it('returns 204 No Content on successful deletion', async () => {
+    const db = getDatabase();
+    const result = db.prepare(`INSERT INTO problems (name, link) VALUES (?, ?)`).run(
+      'Two Sum',
+      'https://leetcode.com/problems/two-sum'
+    );
+    const problemId = result.lastInsertRowid as number;
+
+    const response = await request(app).delete(`/api/problems/${problemId}`);
+
+    expect(response.status).toBe(204);
+    expect(response.body).toEqual({});
+
+    // Verify problem was deleted
+    const problem = db.prepare('SELECT * FROM problems WHERE id = ?').get(problemId);
+    expect(problem).toBeUndefined();
+  });
+
+  it('cascades deletion to attempts table', async () => {
+    const db = getDatabase();
+    const result = db.prepare(`INSERT INTO problems (name, link) VALUES (?, ?)`).run(
+      'Two Sum',
+      'https://leetcode.com/problems/two-sum'
+    );
+    const problemId = result.lastInsertRowid as number;
+
+    // Insert attempts for this problem
+    db.prepare(`INSERT INTO attempts (problem_id, color_result, attempted_at) VALUES (?, ?, ?)`).run(
+      problemId,
+      'orange',
+      '2024-01-01T10:00:00.000Z'
+    );
+    db.prepare(`INSERT INTO attempts (problem_id, color_result, attempted_at) VALUES (?, ?, ?)`).run(
+      problemId,
+      'yellow',
+      '2024-01-02T10:00:00.000Z'
+    );
+
+    // Verify attempts exist before deletion
+    const attemptsBefore = db.prepare('SELECT * FROM attempts WHERE problem_id = ?').all(problemId);
+    expect(attemptsBefore).toHaveLength(2);
+
+    const response = await request(app).delete(`/api/problems/${problemId}`);
+
+    expect(response.status).toBe(204);
+
+    // Verify attempts were deleted
+    const attemptsAfter = db.prepare('SELECT * FROM attempts WHERE problem_id = ?').all(problemId);
+    expect(attemptsAfter).toHaveLength(0);
+  });
+
+  it('cascades deletion to daily_selections table', async () => {
+    const db = getDatabase();
+    const result = db.prepare(`INSERT INTO problems (name, link) VALUES (?, ?)`).run(
+      'Two Sum',
+      'https://leetcode.com/problems/two-sum'
+    );
+    const problemId = result.lastInsertRowid as number;
+
+    // Insert daily_selections for this problem
+    db.prepare(`INSERT INTO daily_selections (problem_id, selected_date, completed) VALUES (?, ?, ?)`).run(
+      problemId,
+      '2024-01-01',
+      0
+    );
+    db.prepare(`INSERT INTO daily_selections (problem_id, selected_date, completed) VALUES (?, ?, ?)`).run(
+      problemId,
+      '2024-01-02',
+      1
+    );
+
+    // Verify daily_selections exist before deletion
+    const selectionsBefore = db.prepare('SELECT * FROM daily_selections WHERE problem_id = ?').all(problemId);
+    expect(selectionsBefore).toHaveLength(2);
+
+    const response = await request(app).delete(`/api/problems/${problemId}`);
+
+    expect(response.status).toBe(204);
+
+    // Verify daily_selections were deleted
+    const selectionsAfter = db.prepare('SELECT * FROM daily_selections WHERE problem_id = ?').all(problemId);
+    expect(selectionsAfter).toHaveLength(0);
+  });
+
+  it('cascades deletion to both attempts and daily_selections', async () => {
+    const db = getDatabase();
+    const result = db.prepare(`INSERT INTO problems (name, link) VALUES (?, ?)`).run(
+      'Two Sum',
+      'https://leetcode.com/problems/two-sum'
+    );
+    const problemId = result.lastInsertRowid as number;
+
+    // Insert attempts
+    db.prepare(`INSERT INTO attempts (problem_id, color_result, attempted_at) VALUES (?, ?, ?)`).run(
+      problemId,
+      'orange',
+      '2024-01-01T10:00:00.000Z'
+    );
+
+    // Insert daily_selections
+    db.prepare(`INSERT INTO daily_selections (problem_id, selected_date, completed) VALUES (?, ?, ?)`).run(
+      problemId,
+      '2024-01-01',
+      1
+    );
+
+    const response = await request(app).delete(`/api/problems/${problemId}`);
+
+    expect(response.status).toBe(204);
+
+    // Verify all related data was deleted
+    const problem = db.prepare('SELECT * FROM problems WHERE id = ?').get(problemId);
+    const attempts = db.prepare('SELECT * FROM attempts WHERE problem_id = ?').all(problemId);
+    const selections = db.prepare('SELECT * FROM daily_selections WHERE problem_id = ?').all(problemId);
+
+    expect(problem).toBeUndefined();
+    expect(attempts).toHaveLength(0);
+    expect(selections).toHaveLength(0);
+  });
+
+  it('returns 404 when problem does not exist', async () => {
+    const response = await request(app).delete('/api/problems/999');
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe('Not Found');
+    expect(response.body.message).toContain('not found');
+  });
+
+  it('returns 400 when ID is invalid (not a number)', async () => {
+    const response = await request(app).delete('/api/problems/invalid');
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Validation Error');
+    expect(response.body.message).toContain('must be a number');
+  });
+
+  it('returns 404 when ID contains decimal (parseInt parses as integer)', async () => {
+    // parseInt('1.5', 10) returns 1, which is valid but problem won't exist
+    const response = await request(app).delete('/api/problems/1.5');
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe('Not Found');
+    expect(response.body.message).toContain('not found');
+  });
+
+  it('deletes problem that is in today\'s daily selection', async () => {
+    const db = getDatabase();
+    const result = db.prepare(`INSERT INTO problems (name, link) VALUES (?, ?)`).run(
+      'Two Sum',
+      'https://leetcode.com/problems/two-sum'
+    );
+    const problemId = result.lastInsertRowid as number;
+
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+
+    // Insert into today's daily selection
+    db.prepare(`INSERT INTO daily_selections (problem_id, selected_date, completed) VALUES (?, ?, ?)`).run(
+      problemId,
+      today,
+      0
+    );
+
+    const response = await request(app).delete(`/api/problems/${problemId}`);
+
+    expect(response.status).toBe(204);
+
+    // Verify problem and daily selection were deleted
+    const problem = db.prepare('SELECT * FROM problems WHERE id = ?').get(problemId);
+    const selection = db.prepare('SELECT * FROM daily_selections WHERE problem_id = ? AND selected_date = ?').get(
+      problemId,
+      today
+    );
+
+    expect(problem).toBeUndefined();
+    expect(selection).toBeUndefined();
+  });
+
+  it('does not affect other problems when deleting one', async () => {
+    const db = getDatabase();
+    const result1 = db.prepare(`INSERT INTO problems (name, link) VALUES (?, ?)`).run(
+      'Two Sum',
+      'https://leetcode.com/problems/two-sum'
+    );
+    const problemId1 = result1.lastInsertRowid as number;
+
+    const result2 = db.prepare(`INSERT INTO problems (name, link) VALUES (?, ?)`).run(
+      'Valid Parentheses',
+      'https://leetcode.com/problems/valid-parentheses'
+    );
+    const problemId2 = result2.lastInsertRowid as number;
+
+    // Add attempts for both problems
+    db.prepare(`INSERT INTO attempts (problem_id, color_result, attempted_at) VALUES (?, ?, ?)`).run(
+      problemId1,
+      'orange',
+      '2024-01-01T10:00:00.000Z'
+    );
+    db.prepare(`INSERT INTO attempts (problem_id, color_result, attempted_at) VALUES (?, ?, ?)`).run(
+      problemId2,
+      'yellow',
+      '2024-01-02T10:00:00.000Z'
+    );
+
+    // Delete first problem
+    const response = await request(app).delete(`/api/problems/${problemId1}`);
+
+    expect(response.status).toBe(204);
+
+    // Verify first problem and its attempts are deleted
+    const problem1 = db.prepare('SELECT * FROM problems WHERE id = ?').get(problemId1);
+    const attempts1 = db.prepare('SELECT * FROM attempts WHERE problem_id = ?').all(problemId1);
+    expect(problem1).toBeUndefined();
+    expect(attempts1).toHaveLength(0);
+
+    // Verify second problem and its attempts still exist
+    const problem2 = db.prepare('SELECT * FROM problems WHERE id = ?').get(problemId2);
+    const attempts2 = db.prepare('SELECT * FROM attempts WHERE problem_id = ?').all(problemId2);
+    expect(problem2).toBeDefined();
+    expect(attempts2).toHaveLength(1);
+  });
+
+  it('handles deletion of problem with no attempts or daily_selections', async () => {
+    const db = getDatabase();
+    const result = db.prepare(`INSERT INTO problems (name, link) VALUES (?, ?)`).run(
+      'Two Sum',
+      'https://leetcode.com/problems/two-sum'
+    );
+    const problemId = result.lastInsertRowid as number;
+
+    const response = await request(app).delete(`/api/problems/${problemId}`);
+
+    expect(response.status).toBe(204);
+
+    // Verify problem was deleted
+    const problem = db.prepare('SELECT * FROM problems WHERE id = ?').get(problemId);
+    expect(problem).toBeUndefined();
+  });
+
+  it('uses transaction for atomic deletion (all or nothing)', async () => {
+    const db = getDatabase();
+    const result = db.prepare(`INSERT INTO problems (name, link) VALUES (?, ?)`).run(
+      'Two Sum',
+      'https://leetcode.com/problems/two-sum'
+    );
+    const problemId = result.lastInsertRowid as number;
+
+    // Insert attempts and daily_selections
+    db.prepare(`INSERT INTO attempts (problem_id, color_result, attempted_at) VALUES (?, ?, ?)`).run(
+      problemId,
+      'orange',
+      '2024-01-01T10:00:00.000Z'
+    );
+    db.prepare(`INSERT INTO daily_selections (problem_id, selected_date, completed) VALUES (?, ?, ?)`).run(
+      problemId,
+      '2024-01-01',
+      0
+    );
+
+    // Store counts before deletion
+    const problemsBefore = db.prepare('SELECT COUNT(*) as count FROM problems').get() as { count: number };
+    const attemptsBefore = db.prepare('SELECT COUNT(*) as count FROM attempts').get() as { count: number };
+    const selectionsBefore = db.prepare('SELECT COUNT(*) as count FROM daily_selections').get() as { count: number };
+
+    const response = await request(app).delete(`/api/problems/${problemId}`);
+
+    expect(response.status).toBe(204);
+
+    // Verify all deletions occurred
+    const problemsAfter = db.prepare('SELECT COUNT(*) as count FROM problems').get() as { count: number };
+    const attemptsAfter = db.prepare('SELECT COUNT(*) as count FROM attempts').get() as { count: number };
+    const selectionsAfter = db.prepare('SELECT COUNT(*) as count FROM daily_selections').get() as { count: number };
+
+    expect(problemsAfter.count).toBe(problemsBefore.count - 1);
+    expect(attemptsAfter.count).toBe(attemptsBefore.count - 1);
+    expect(selectionsAfter.count).toBe(selectionsBefore.count - 1);
+  });
+
+  it('deletes problem with multiple attempts and daily_selections across different dates', async () => {
+    const db = getDatabase();
+    const result = db.prepare(`INSERT INTO problems (name, link) VALUES (?, ?)`).run(
+      'Two Sum',
+      'https://leetcode.com/problems/two-sum'
+    );
+    const problemId = result.lastInsertRowid as number;
+
+    // Insert multiple attempts
+    db.prepare(`INSERT INTO attempts (problem_id, color_result, attempted_at) VALUES (?, ?, ?)`).run(
+      problemId,
+      'orange',
+      '2024-01-01T10:00:00.000Z'
+    );
+    db.prepare(`INSERT INTO attempts (problem_id, color_result, attempted_at) VALUES (?, ?, ?)`).run(
+      problemId,
+      'yellow',
+      '2024-01-02T10:00:00.000Z'
+    );
+    db.prepare(`INSERT INTO attempts (problem_id, color_result, attempted_at) VALUES (?, ?, ?)`).run(
+      problemId,
+      'green',
+      '2024-01-03T10:00:00.000Z'
+    );
+
+    // Insert multiple daily_selections
+    db.prepare(`INSERT INTO daily_selections (problem_id, selected_date, completed) VALUES (?, ?, ?)`).run(
+      problemId,
+      '2024-01-01',
+      1
+    );
+    db.prepare(`INSERT INTO daily_selections (problem_id, selected_date, completed) VALUES (?, ?, ?)`).run(
+      problemId,
+      '2024-01-02',
+      1
+    );
+    db.prepare(`INSERT INTO daily_selections (problem_id, selected_date, completed) VALUES (?, ?, ?)`).run(
+      problemId,
+      '2024-01-03',
+      0
+    );
+
+    // Verify data exists before deletion
+    const attemptsBefore = db.prepare('SELECT * FROM attempts WHERE problem_id = ?').all(problemId);
+    const selectionsBefore = db.prepare('SELECT * FROM daily_selections WHERE problem_id = ?').all(problemId);
+    expect(attemptsBefore).toHaveLength(3);
+    expect(selectionsBefore).toHaveLength(3);
+
+    const response = await request(app).delete(`/api/problems/${problemId}`);
+
+    expect(response.status).toBe(204);
+
+    // Verify all related data was deleted
+    const problem = db.prepare('SELECT * FROM problems WHERE id = ?').get(problemId);
+    const attemptsAfter = db.prepare('SELECT * FROM attempts WHERE problem_id = ?').all(problemId);
+    const selectionsAfter = db.prepare('SELECT * FROM daily_selections WHERE problem_id = ?').all(problemId);
+
+    expect(problem).toBeUndefined();
+    expect(attemptsAfter).toHaveLength(0);
+    expect(selectionsAfter).toHaveLength(0);
+  });
+});

@@ -10,6 +10,7 @@ import { FilterBar } from '../components/FilterBar';
 import { ProblemsTable } from '../components/ProblemsTable';
 import { EditProblemModal } from '../components/EditProblemModal';
 import { AddProblemModal } from '../components/AddProblemModal';
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 
 /**
  * Error boundary to catch unexpected React errors
@@ -78,6 +79,9 @@ function AllProblemsContent() {
 
   // Edit modal state
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
+
+  // Delete modal state
+  const [deletingProblem, setDeletingProblem] = useState<Problem | null>(null);
 
   // Fetch problems on mount and after import
   const fetchProblems = async () => {
@@ -214,6 +218,30 @@ function AllProblemsContent() {
       });
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to update problem');
+    }
+  };
+
+  const handleDelete = (problem: Problem) => {
+    setDeletingProblem(problem);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingProblem) return;
+
+    // Capture reference to prevent race conditions
+    const problemToDelete = deletingProblem;
+
+    try {
+      await problemsApi.delete(problemToDelete.id);
+
+      // Remove from local state using functional update
+      setProblems((prev) => prev.filter(p => p.id !== problemToDelete.id));
+
+      // Close modal
+      setDeletingProblem(null);
+    } catch (err) {
+      // Error is already displayed in modal, just rethrow
+      throw err;
     }
   };
 
@@ -371,6 +399,7 @@ function AllProblemsContent() {
       <ProblemsTable
         problems={filteredProblems}
         onEdit={handleEdit}
+        onDelete={handleDelete}
         isLoading={isLoading}
       />
 
@@ -394,6 +423,14 @@ function AllProblemsContent() {
         isOpen={!!editingProblem}
         onClose={() => setEditingProblem(null)}
         onSave={handleSave}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deletingProblem}
+        problemName={deletingProblem?.name || ''}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeletingProblem(null)}
       />
     </div>
   );
