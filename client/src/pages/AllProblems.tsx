@@ -76,6 +76,9 @@ function AllProblemsContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedColor, setSelectedColor] = useState<ProblemColor | 'all'>('all');
 
+  // Expandable row state
+  const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
+
   // Edit modal state
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
 
@@ -110,6 +113,11 @@ function AllProblemsContent() {
       return matchesSearch && matchesColor;
     });
   }, [problems, searchQuery, selectedColor]);
+
+  // Reset expanded row when filters change
+  useEffect(() => {
+    setExpandedRowId(null);
+  }, [searchQuery, selectedColor]);
 
   const handleImportSuccess = (result: { imported: number; skipped: number }) => {
     setImportSuccess(result);
@@ -160,6 +168,10 @@ function AllProblemsContent() {
       return () => clearTimeout(timeoutId);
     }
   }, [exportSuccess]);
+
+  const handleRowToggle = (problemId: number) => {
+    setExpandedRowId((prev) => (prev === problemId ? null : problemId));
+  };
 
   const handleEdit = (problem: Problem) => {
     setEditingProblem(problem);
@@ -372,6 +384,8 @@ function AllProblemsContent() {
         problems={filteredProblems}
         onEdit={handleEdit}
         isLoading={isLoading}
+        expandedRowId={expandedRowId}
+        onRowToggle={handleRowToggle}
       />
 
       {/* Add Problem Modal */}

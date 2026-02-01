@@ -2,13 +2,15 @@
  * ProblemsTable component - Sortable table for displaying all problems
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import type { Problem, ProblemColor } from '../api/types';
 
 interface ProblemsTableProps {
   problems: Problem[];
   onEdit: (problem: Problem) => void;
   isLoading: boolean;
+  expandedRowId: number | null;
+  onRowToggle: (problemId: number) => void;
 }
 
 type SortField = 'name' | 'color' | 'lastReviewed' | 'attemptCount';
@@ -35,7 +37,7 @@ const colorOrder: Record<ProblemColor, number> = {
   green: 3,
 };
 
-export function ProblemsTable({ problems, onEdit, isLoading }: ProblemsTableProps) {
+export function ProblemsTable({ problems, onEdit, isLoading, expandedRowId, onRowToggle }: ProblemsTableProps) {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -160,6 +162,9 @@ export function ProblemsTable({ problems, onEdit, isLoading }: ProblemsTableProp
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th scope="col" className="px-6 py-3 w-8">
+                {/* Chevron column */}
+              </th>
               <th
                 scope="col"
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
@@ -206,47 +211,93 @@ export function ProblemsTable({ problems, onEdit, isLoading }: ProblemsTableProp
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {sortedProblems.map((problem) => (
-              <tr key={problem.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <div className="text-sm font-medium text-gray-900">{problem.name}</div>
-                    <a
-                      href={problem.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      View Problem
-                    </a>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      colorBadgeStyles[problem.color]
-                    }`}
+            {sortedProblems.map((problem) => {
+              const isExpanded = expandedRowId === problem.id;
+              return (
+                <Fragment key={problem.id}>
+                  <tr
+                    onClick={() => onRowToggle(problem.id)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault(); // Prevent page scroll on Space
+                        onRowToggle(problem.id);
+                      }
+                    }}
+                    aria-expanded={isExpanded}
                   >
-                    {colorLabels[problem.color]}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {formatDate(problem.lastReviewed)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {problem.attemptCount || 0}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => onEdit(problem)}
-                    className="text-blue-600 hover:text-blue-900 focus:outline-none focus:underline"
-                  >
-                    Edit
-                  </button>
-                </td>
-              </tr>
-            ))}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {isExpanded ? (
+                        <span className="text-gray-400 transition-transform duration-200 inline-block rotate-90" data-testid="chevron-down">
+                          ▶
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 transition-transform duration-200 inline-block" data-testid="chevron-right">
+                          ▶
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <div className="text-sm font-medium text-gray-900">{problem.name}</div>
+                        <a
+                          href={problem.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          View Problem
+                        </a>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          colorBadgeStyles[problem.color]
+                        }`}
+                      >
+                        {colorLabels[problem.color]}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(problem.lastReviewed)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {problem.attemptCount || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(problem);
+                        }}
+                        className="text-blue-600 hover:text-blue-900 focus:outline-none focus:underline"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-4 bg-gray-50 border-t border-gray-200" data-testid="expanded-content">
+                        <div className="text-sm">
+                          <div className="font-semibold text-gray-600 mb-2">Key Insight:</div>
+                          {problem.keyInsight ? (
+                            <div className="text-gray-700 whitespace-pre-wrap">{problem.keyInsight}</div>
+                          ) : (
+                            <div className="text-gray-500 italic">
+                              No key insight recorded yet. Click Edit to add one.
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
