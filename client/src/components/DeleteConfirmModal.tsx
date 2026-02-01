@@ -20,19 +20,19 @@ export function DeleteConfirmModal({
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
-
   // Handle Escape key to close modal
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !isDeleting) {
-        handleClose();
+        onClose();
       }
     };
 
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isDeleting]);
+  }, [isOpen, isDeleting, onClose]);
 
   const handleConfirm = async () => {
     setIsDeleting(true);
@@ -53,6 +53,8 @@ export function DeleteConfirmModal({
       onClose();
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div
