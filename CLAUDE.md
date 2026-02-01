@@ -209,47 +209,58 @@ brew install gitleaks
 gitleaks version
 ```
 
-## Development Workflow
+## Workflow Orchestration
 
-**CRITICAL: MANDATORY Subagent Usage**
+### 1. Plan Mode Default
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- If something goes sideways, STOP and re-plan immediately – don't keep pushing
+- Use plan mode for verification steps, not just building
+- Write detailed specs upfront to reduce ambiguity
 
-🚨 **YOU MUST USE SUBAGENTS FOR ALL NON-TRIVIAL WORK** 🚨
+### 2. Subagent Strategy
+- Use subagents liberally to keep main context window clean
+- Offload research, exploration, and parallel analysis to subagents
+- For complex problems, throw more compute at it via subagents
+- One task per subagent for focused execution
 
-For every implementation task, you MUST use specialized subagents in parallel:
+### 3. Self-Improvement Loop
+- After ANY correction from the user: update `tasks/lessons.md` with the pattern
+- Write rules for yourself that prevent the same mistake
+- Ruthlessly iterate on these lessons until mistake rate drops
+- Review lessons at session start for relevant project
 
-**Backend Implementation (REQUIRED):**
-1. **backend-engineering-expert** - Design and implement API routes, services, database logic
-2. **typescript-test-specialist** - Write comprehensive tests (TDD approach)
-3. **ts-code-reviewer** - Review code before opening PR (catches security issues, bugs)
+### 4. Verification Before Done
+- Never mark a task complete without proving it works
+- Diff behavior between main and your changes when relevant
+- Ask yourself: "Would a staff engineer approve this?"
+- Run tests, check logs, demonstrate correctness
 
-**Frontend Implementation (REQUIRED):**
-1. **frontend-ux-engineer** - Design and implement UI components, pages, UX flows
-2. **typescript-test-specialist** - Write component tests and integration tests
-3. **ts-code-reviewer** - Review code before opening PR
+### 5. Demand Elegance (Balanced)
+- For non-trivial changes: pause and ask "is there a more elegant way?"
+- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
+- Skip this for simple, obvious fixes – don't over-engineer
+- Challenge your own work before presenting it
 
-**When to Use Each Agent:**
-- Launch agents **at the START** of implementation, not after writing code yourself
-- Use **Task tool with parallel invocations** when multiple agents can work simultaneously
-- Example: Launch backend-engineering-expert AND typescript-test-specialist in parallel
-- ONLY skip agents for trivial changes (typos, single-line fixes, documentation)
+### 6. Autonomous Bug Fixing
+- When given a bug report: just fix it. Don't ask for hand-holding
+- Point at logs, errors, failing tests – then resolve them
+- Zero context switching required from the user
+- Go fix failing CI tests without being told how
 
-**Why This Matters:**
-- Agents catch security vulnerabilities (SQL injection, race conditions)
-- Agents enforce best practices and proper architecture
-- Agents write better tests with comprehensive coverage
-- Parallelization speeds up development by 2-3x
+## Task Management
 
-**Test-Driven Development (Streamlined)**
+1. **Plan First**: Write plan to `tasks/todo.md` with checkable items
+2. **Verify Plan**: Check in before starting implementation
+3. **Track Progress**: Mark items complete as you go
+4. **Explain Changes**: High-level summary at each step
+5. **Document Results**: Add review section to `tasks/todo.md`
+6. **Capture Lessons**: Update `tasks/lessons.md` after corrections
 
-Write tests alongside implementation in quick iterations:
-1. **Use typescript-test-specialist agent** - Let the agent write tests first or in parallel
-2. **Use backend/frontend agents** - Let them implement following the test patterns
-3. **Run tests frequently** - Verify all tests pass at feature completion
-4. **Use ts-code-reviewer** - Review before committing
+## Core Principles
 
-Never implement features or fix bugs without corresponding tests.
-
-**Parallelization**: Build multiple independent modules/endpoints simultaneously when possible to maximize efficiency.
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
+- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
 
 ## Architecture
 
