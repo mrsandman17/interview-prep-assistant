@@ -86,6 +86,7 @@ describe('ProblemsTable', () => {
       expect(screen.getByText('Problem Name')).toBeInTheDocument();
       expect(screen.getByText('Status')).toBeInTheDocument();
       expect(screen.getByText('Last Reviewed')).toBeInTheDocument();
+      expect(screen.getByText('Date Added')).toBeInTheDocument();
       expect(screen.getByText('Attempts')).toBeInTheDocument();
       expect(screen.getByText('Actions')).toBeInTheDocument();
     });
@@ -151,13 +152,13 @@ describe('ProblemsTable', () => {
   });
 
   describe('Sorting', () => {
-    it('should sort by name in ascending order by default', () => {
+    it('should sort by createdAt in descending order by default', () => {
       render(<ProblemsTable {...defaultProps} />);
 
       const rows = screen.getAllByRole('row');
-      // Skip header row - alphabetically: Add Two Numbers, Longest Substring, Problem With Empty Insight, Problem Without Insight, Two Sum
-      expect(within(rows[1]).getByText('Add Two Numbers')).toBeInTheDocument();
-      expect(within(rows[2]).getByText('Longest Substring')).toBeInTheDocument();
+      // Skip header row - by createdAt desc (newest first): Problem With Empty Insight (2024-01-17), Problem Without Insight (2024-01-16), Longest Substring (2024-01-14), Add Two Numbers (2024-01-12), Two Sum (2024-01-10)
+      expect(within(rows[1]).getByText('Problem With Empty Insight')).toBeInTheDocument();
+      expect(within(rows[2]).getByText('Problem Without Insight')).toBeInTheDocument();
       expect(within(rows[5]).getByText('Two Sum')).toBeInTheDocument();
     });
 
@@ -165,11 +166,11 @@ describe('ProblemsTable', () => {
       const user = userEvent.setup();
       render(<ProblemsTable {...defaultProps} />);
 
-      const nameHeader = screen.getByText('Problem Name');
-      await user.click(nameHeader);
+      const dateAddedHeader = screen.getByText('Date Added');
+      await user.click(dateAddedHeader);
 
       const rows = screen.getAllByRole('row');
-      // After clicking, should reverse to descending
+      // After clicking, should toggle to ascending (oldest first)
       expect(within(rows[1]).getByText('Two Sum')).toBeInTheDocument();
     });
 
@@ -656,15 +657,15 @@ describe('ProblemsTable', () => {
           />
         );
 
-        // Click Edit button on second row (alphabetically: Longest Substring, id: 3)
+        // Click Edit button on second row (by createdAt desc: Problem Without Insight, id: 4)
         const editButtons = screen.getAllByText('Edit');
         await user.click(editButtons[1]);
 
-        // Should call onEdit with correct problem (Longest Substring)
+        // Should call onEdit with correct problem (Problem Without Insight)
         expect(handleEdit).toHaveBeenCalledWith(
           expect.objectContaining({
-            id: 3,
-            name: 'Longest Substring',
+            id: 4,
+            name: 'Problem Without Insight',
           })
         );
         expect(handleRowToggle).not.toHaveBeenCalled();
