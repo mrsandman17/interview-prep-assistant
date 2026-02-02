@@ -15,6 +15,7 @@ import type {
   UpdateProblemRequest,
   ImportProblemsRequest,
   ImportProblemsResponse,
+  RandomInsight,
   ApiError,
 } from './types';
 
@@ -202,6 +203,16 @@ export const dailyApi = {
     return fetchJSON<{ problem: DailyProblem }>(`/api/daily/${problemId}/replace`, {
       method: 'POST',
     });
+  },
+
+  /**
+   * Get a random key insight from problems (excluding specified IDs)
+   */
+  getRandomInsight: async (excludeIds: number[] = []): Promise<RandomInsight | null> => {
+    const query = excludeIds.length > 0
+      ? `?exclude=${excludeIds.join(',')}`
+      : '';
+    return fetchJSON<RandomInsight | null>(`/api/daily/random-insight${query}`);
   },
 };
 
