@@ -12,7 +12,8 @@ export interface Problem {
   keyInsight: string | null;
   lastReviewed: string | null;
   createdAt: string;
-  attemptCount?: number; // Optional for backwards compatibility, included in list endpoint
+  reviewCount: number;
+  attemptCount?: number; // Deprecated, kept for backwards compatibility
 }
 
 export interface DailyProblem extends Problem {
@@ -30,6 +31,14 @@ export interface CompleteProblemRequest {
 
 export interface CompleteProblemResponse {
   problem: DailyProblem;
+}
+
+export interface ReviewProblemRequest {
+  colorResult: Exclude<ProblemColor, 'gray'>;
+}
+
+export interface ReviewProblemResponse {
+  problem: Problem;
 }
 
 export interface Stats {
@@ -51,6 +60,7 @@ export interface CreateProblemRequest {
   name: string;
   link: string;
   keyInsight?: string;
+  color?: ProblemColor;
 }
 
 export interface UpdateProblemRequest {

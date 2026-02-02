@@ -11,6 +11,7 @@ import { ProblemsTable } from '../components/ProblemsTable';
 import { EditProblemModal } from '../components/EditProblemModal';
 import { AddProblemModal } from '../components/AddProblemModal';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
+import { ReviewProblemModal } from '../components/ReviewProblemModal';
 
 /**
  * Error boundary to catch unexpected React errors
@@ -85,6 +86,9 @@ function AllProblemsContent() {
 
   // Delete modal state
   const [deletingProblem, setDeletingProblem] = useState<Problem | null>(null);
+
+  // Review modal state
+  const [reviewingProblem, setReviewingProblem] = useState<Problem | null>(null);
 
   // Fetch problems on mount and after import
   const fetchProblems = async () => {
@@ -235,6 +239,29 @@ function AllProblemsContent() {
 
   const handleDelete = (problem: Problem) => {
     setDeletingProblem(problem);
+  };
+
+  const handleReview = (problem: Problem) => {
+    setReviewingProblem(problem);
+  };
+
+  const handleConfirmReview = async (
+    problemId: number,
+    colorResult: Exclude<ProblemColor, 'gray'>
+  ) => {
+    try {
+      const updatedProblem = await problemsApi.reviewProblem(problemId, colorResult);
+
+      // Update local state with functional update
+      setProblems((prev) =>
+        prev.map((p) => (p.id === problemId ? updatedProblem : p))
+      );
+
+      setReviewingProblem(null);
+    } catch (err) {
+      // Error will be shown in modal
+      throw err;
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -412,6 +439,7 @@ function AllProblemsContent() {
         problems={filteredProblems}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onReview={handleReview}
         isLoading={isLoading}
         expandedRowId={expandedRowId}
         onRowToggle={handleRowToggle}
@@ -445,6 +473,14 @@ function AllProblemsContent() {
         problemName={deletingProblem?.name || ''}
         onConfirm={handleConfirmDelete}
         onClose={() => setDeletingProblem(null)}
+      />
+
+      {/* Review Problem Modal */}
+      <ReviewProblemModal
+        problem={reviewingProblem}
+        isOpen={!!reviewingProblem}
+        onClose={() => setReviewingProblem(null)}
+        onReview={handleConfirmReview}
       />
     </div>
   );

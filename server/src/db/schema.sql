@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS problems (
   color TEXT DEFAULT 'gray' CHECK(color IN ('gray', 'orange', 'yellow', 'green')),
   key_insight TEXT,
   last_reviewed DATE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  review_count INTEGER DEFAULT 0
 );
 
 -- Attempt history table
