@@ -91,3 +91,13 @@ export interface CompleteProblemResponse {
 export interface ReplaceProblemResponse {
   problem: ProblemWithSelection;
 }
+
+/**
+ * Response for random insight from today's daily selection
+ */
+export interface RandomInsight {
+  problemId: number;
+  problemName: string;
+  problemLink: string;
+  keyInsight: string;
+}

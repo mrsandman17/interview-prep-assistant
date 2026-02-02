@@ -79,6 +79,13 @@ export interface ImportProblemsResponse {
   skipped: number;
 }
 
+export interface RandomInsight {
+  problemId: number;
+  problemName: string;
+  problemLink: string;
+  keyInsight: string;
+}
+
 export interface ApiError {
   error: string;
 }

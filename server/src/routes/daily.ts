@@ -2,10 +2,11 @@
  * Daily Selection API Routes
  *
  * Endpoints:
- * - GET    /api/daily              - Get today's selection (creates if needed)
+ * - GET    /api/daily                     - Get today's selection (creates if needed)
  * - POST   /api/daily/:problemId/complete - Mark problem completed with color result
  * - POST   /api/daily/:problemId/replace  - Replace a specific problem in today's selection
- * - POST   /api/daily/refresh      - Generate new selection for today
+ * - POST   /api/daily/refresh             - Generate new selection for today
+ * - GET    /api/daily/random-insight      - Get random key insight from today's problems
  */
 
 import { Router, Request, Response } from 'express';
@@ -21,6 +22,7 @@ import type {
   CompleteProblemRequest,
   CompleteProblemResponse,
   ProblemWithSelection,
+  RandomInsight,
 } from './api-types.js';
 import { selectDailyProblems, selectSingleProblem } from '../services/selection.js';
 
@@ -572,6 +574,81 @@ dailyRouter.post('/:problemId/replace', (req: Request, res: Response) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to replace problem',
+    });
+  }
+});
+
+/**
+ * GET /api/daily/random-insight
+ * Get a random key insight from today's daily selection
+ *
+ * Returns a random problem with a key insight from today's selection.
+ * Supports exclusion of already-seen problems via the `exclude` query parameter.
+ *
+ * Query Parameters:
+ * - exclude: Comma-separated list of problem IDs to exclude (e.g., "1,2,3")
+ *
+ * Returns:
+ * - RandomInsight if an insight is available
+ * - null if no insights are available (no selection, no key_insight, or all excluded)
+ *
+ * @query {string} exclude - Optional comma-separated problem IDs to exclude
+ * @returns {RandomInsight | null} Random insight or null if none available
+ */
+dailyRouter.get('/random-insight', (req: Request, res: Response) => {
+  try {
+    const db = getDatabase();
+    const today = getTodayDate();
+
+    // Parse exclude query parameter
+    const excludeParam = req.query.exclude as string | undefined;
+    const excludeIds: number[] = excludeParam
+      ? excludeParam.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id))
+      : [];
+
+    // Build query with optional exclusion clause
+    let query = `
+      SELECT
+        p.id as problemId,
+        p.name as problemName,
+        p.link as problemLink,
+        p.key_insight as keyInsight
+      FROM daily_selections ds
+      JOIN problems p ON ds.problem_id = p.id
+      WHERE ds.selected_date = ?
+        AND p.key_insight IS NOT NULL
+        AND p.key_insight != ''
+    `;
+
+    let params: any[] = [today];
+
+    // Add exclusion clause if there are IDs to exclude
+    if (excludeIds.length > 0) {
+      const placeholders = excludeIds.map(() => '?').join(', ');
+      query += ` AND p.id NOT IN (${placeholders})`;
+      params = [today, ...excludeIds];
+    }
+
+    query += `
+      ORDER BY RANDOM()
+      LIMIT 1
+    `;
+
+    const stmt = db.prepare(query);
+    const result = stmt.get(...params) as RandomInsight | undefined;
+
+    // Return null if no insight found (handles all edge cases)
+    if (!result) {
+      res.status(200).json(null);
+      return;
+    }
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching random insight:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to fetch random insight',
     });
   }
 });
