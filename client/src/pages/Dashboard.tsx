@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useDaily } from '../hooks/useDaily';
 import { useStats } from '../hooks/useStats';
 import { ProblemCard } from '../components/ProblemCard';
+import { DailyHint } from '../components/DailyHint';
 import type { ProblemColor } from '../api/types';
 
 export function Dashboard() {
@@ -111,6 +112,9 @@ export function Dashboard() {
           ></div>
         </div>
       </div>
+
+      {/* Daily Hint */}
+      <DailyHint />
 
       {/* Problem Cards Grid */}
       {problems.length === 0 ? (

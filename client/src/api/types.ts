@@ -51,6 +51,7 @@ export interface CreateProblemRequest {
   name: string;
   link: string;
   keyInsight?: string;
+  color?: ProblemColor;
 }
 
 export interface UpdateProblemRequest {
@@ -67,6 +68,13 @@ export interface ImportProblemsRequest {
 export interface ImportProblemsResponse {
   imported: number;
   skipped: number;
+}
+
+export interface RandomInsight {
+  problemId: number;
+  problemName: string;
+  problemLink: string;
+  keyInsight: string;
 }
 
 export interface ApiError {
