@@ -12,7 +12,8 @@
 
 import { Router, Request, Response } from 'express';
 import { getDatabase } from '../db/index.js';
-import type { Problem, ProblemColor, Attempt } from '../db/types.js';
+import type { Problem, ProblemColor, Attempt, AttemptColorResult } from '../db/types.js';
+import { updateProblemReview } from './daily.js';
 import type {
   CreateProblemRequest,
   UpdateProblemRequest,
@@ -56,6 +57,7 @@ problemsRouter.get('/', (req: Request, res: Response) => {
     let query = `
       SELECT
         p.*,
+        p.review_count as reviewCount,
         COUNT(a.id) as attemptCount
       FROM problems p
       LEFT JOIN attempts a ON p.id = a.problem_id
@@ -685,6 +687,88 @@ problemsRouter.delete('/:id', (req: Request, res: Response) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to delete problem',
+    });
+  }
+});
+
+/**
+ * POST /api/problems/:id/review
+ * Manually review a problem from All Problems page
+ *
+ * Similar to daily complete, but:
+ * - Does NOT require problem to be in today's selection
+ * - Does NOT update daily_selections table
+ * - Allows reviewing any problem at any time
+ *
+ * Updates:
+ * - Problem color (based on transition rules)
+ * - Problem last_reviewed date
+ * - Increments review_count
+ * - Inserts attempt record
+ *
+ * @param {number} id - Problem ID
+ * @body { colorResult: 'orange' | 'yellow' | 'green' }
+ * @returns {Problem} Updated problem
+ */
+problemsRouter.post('/:id/review', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const problemId = parseInt(id, 10);
+
+    if (isNaN(problemId)) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: 'Problem ID must be a number',
+      });
+      return;
+    }
+
+    const { colorResult } = req.body as { colorResult: AttemptColorResult };
+
+    // Validate color result
+    const validColors: AttemptColorResult[] = ['orange', 'yellow', 'green'];
+    if (!colorResult || !validColors.includes(colorResult)) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: 'Color result must be one of: orange, yellow, green',
+      });
+      return;
+    }
+
+    const db = getDatabase();
+
+    // Check if problem exists
+    const checkStmt = db.prepare('SELECT * FROM problems WHERE id = ?');
+    const problem = checkStmt.get(problemId) as Problem | undefined;
+
+    if (!problem) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Problem not found',
+      });
+      return;
+    }
+
+    // Update problem using shared logic
+    const isoString = new Date().toISOString();
+    const today = isoString.split('T')[0];
+    if (!today) {
+      throw new Error('Failed to get today\'s date');
+    }
+
+    // Use transaction for atomicity
+    const reviewTransaction = db.transaction(() => {
+      return updateProblemReview(db, problemId, problem.color, colorResult, today);
+    });
+
+    const result = reviewTransaction();
+
+    res.status(200).json({ problem: result.problem });
+  } catch (error) {
+    console.error('Error reviewing problem:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to review problem',
     });
   }
 });

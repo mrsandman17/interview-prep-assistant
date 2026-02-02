@@ -23,6 +23,7 @@ import Database from 'better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { migrateAddReviewCount } from './migrations/001-add-review-count.js';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -80,6 +81,9 @@ export function initializeDatabase(dbPath: string): void {
   // Execute schema
   // Use exec() for multiple statements (better-sqlite3 handles this safely)
   dbInstance.exec(schema);
+
+  // Run migrations
+  migrateAddReviewCount(dbInstance);
 }
 
 /**

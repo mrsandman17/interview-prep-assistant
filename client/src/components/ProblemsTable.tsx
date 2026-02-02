@@ -9,12 +9,13 @@ interface ProblemsTableProps {
   problems: Problem[];
   onEdit: (problem: Problem) => void;
   onDelete: (problem: Problem) => void;
+  onReview: (problem: Problem) => void;
   isLoading: boolean;
   expandedRowId: number | null;
   onRowToggle: (problemId: number) => void;
 }
 
-type SortField = 'name' | 'color' | 'lastReviewed' | 'createdAt' | 'attemptCount';
+type SortField = 'name' | 'color' | 'lastReviewed' | 'createdAt' | 'reviewCount';
 type SortDirection = 'asc' | 'desc';
 
 const colorBadgeStyles: Record<ProblemColor, string> = {
@@ -38,7 +39,7 @@ const colorOrder: Record<ProblemColor, number> = {
   green: 3,
 };
 
-export function ProblemsTable({ problems, onEdit, onDelete, isLoading, expandedRowId, onRowToggle }: ProblemsTableProps) {
+export function ProblemsTable({ problems, onEdit, onDelete, onReview, isLoading, expandedRowId, onRowToggle }: ProblemsTableProps) {
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
@@ -75,9 +76,9 @@ export function ProblemsTable({ problems, onEdit, onDelete, isLoading, expandedR
           aValue = a.createdAt || '';
           bValue = b.createdAt || '';
           break;
-        case 'attemptCount':
-          aValue = a.attemptCount || 0;
-          bValue = b.attemptCount || 0;
+        case 'reviewCount':
+          aValue = a.reviewCount || 0;
+          bValue = b.reviewCount || 0;
           break;
         default:
           return 0;
@@ -213,11 +214,11 @@ export function ProblemsTable({ problems, onEdit, onDelete, isLoading, expandedR
               <th
                 scope="col"
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                onClick={() => handleSort('attemptCount')}
+                onClick={() => handleSort('reviewCount')}
               >
                 <div className="flex items-center gap-2">
-                  <span>Attempts</span>
-                  <SortIcon field="attemptCount" />
+                  <span>Reviews</span>
+                  <SortIcon field="reviewCount" />
                 </div>
               </th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -283,9 +284,19 @@ export function ProblemsTable({ problems, onEdit, onDelete, isLoading, expandedR
                       {formatDate(problem.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {problem.attemptCount || 0}
+                      {problem.reviewCount || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onReview(problem);
+                        }}
+                        className="text-green-600 hover:text-green-900 focus:outline-none focus:underline"
+                      >
+                        Review
+                      </button>
+                      <span className="text-gray-300 mx-2">|</span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -309,7 +320,7 @@ export function ProblemsTable({ problems, onEdit, onDelete, isLoading, expandedR
                   </tr>
                   {isExpanded && (
                     <tr>
-                      <td colSpan={7} className="px-6 py-4 bg-gray-50 border-t border-gray-200" data-testid="expanded-content">
+                      <td colSpan={8} className="px-6 py-4 bg-gray-50 border-t border-gray-200" data-testid="expanded-content">
                         <div className="text-sm">
                           <div className="font-semibold text-gray-600 mb-2">Key Insight:</div>
                           {problem.keyInsight ? (

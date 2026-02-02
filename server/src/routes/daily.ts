@@ -10,6 +10,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import type Database from 'better-sqlite3';
 import { getDatabase } from '../db/index.js';
 import type {
   Problem,
@@ -52,7 +53,7 @@ function getTodayDate(): string {
  * @param resultColor - User's performance color result
  * @returns The new color after transition
  */
-function getNextColor(currentColor: ProblemColor, resultColor: AttemptColorResult): ProblemColor {
+export function getNextColor(currentColor: ProblemColor, resultColor: AttemptColorResult): ProblemColor {
   // Gray can transition to any result color
   if (currentColor === 'gray') {
     return resultColor;
@@ -78,6 +79,55 @@ function getNextColor(currentColor: ProblemColor, resultColor: AttemptColorResul
 
   // Should never reach here due to type constraints, but handle defensively
   return currentColor;
+}
+
+/**
+ * Shared function to update a problem after review
+ * Used by both daily complete and manual review endpoints
+ *
+ * Updates:
+ * - Problem color (based on transition rules)
+ * - Problem last_reviewed date
+ * - Increments review_count
+ * - Inserts attempt record
+ *
+ * @param db - Database instance
+ * @param problemId - Problem ID to update
+ * @param currentColor - Current problem color
+ * @param colorResult - User's performance color result
+ * @param today - Today's date in ISO format (YYYY-MM-DD)
+ * @returns Object with nextColor and updated problem
+ */
+export function updateProblemReview(
+  db: Database.Database,
+  problemId: number,
+  currentColor: ProblemColor,
+  colorResult: AttemptColorResult,
+  today: string
+): { nextColor: ProblemColor; problem: Problem } {
+  // Calculate next color based on transition rules
+  const nextColor = getNextColor(currentColor, colorResult);
+
+  // Update problem
+  const updateStmt = db.prepare(`
+    UPDATE problems
+    SET color = ?, last_reviewed = ?, review_count = review_count + 1
+    WHERE id = ?
+  `);
+  updateStmt.run(nextColor, today, problemId);
+
+  // Insert attempt record
+  const insertAttemptStmt = db.prepare(`
+    INSERT INTO attempts (problem_id, color_result, attempted_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+  `);
+  insertAttemptStmt.run(problemId, colorResult);
+
+  // Fetch updated problem
+  const selectStmt = db.prepare('SELECT * FROM problems WHERE id = ?');
+  const problem = selectStmt.get(problemId) as Problem;
+
+  return { nextColor, problem };
 }
 
 /**
@@ -325,10 +375,10 @@ dailyRouter.post('/:problemId/complete', (req: Request, res: Response) => {
       // Calculate next color based on transition rules
       const nextColor = getNextColor(problemCheck.currentColor, colorResult);
 
-      // Update problem color and last_reviewed
+      // Update problem color, last_reviewed, and increment review_count
       const updateProblemStmt = db.prepare(`
         UPDATE problems
-        SET color = ?, last_reviewed = ?
+        SET color = ?, last_reviewed = ?, review_count = review_count + 1
         WHERE id = ?
       `);
       updateProblemStmt.run(nextColor, today, problemIdNum);

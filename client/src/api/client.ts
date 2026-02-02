@@ -8,6 +8,8 @@ import type {
   DailySelection,
   CompleteProblemRequest,
   CompleteProblemResponse,
+  ReviewProblemRequest,
+  ReviewProblemResponse,
   Stats,
   Settings,
   UpdateSettingsRequest,
@@ -157,6 +159,23 @@ export const problemsApi = {
       }));
       throw new Error(error.error || `Failed to delete problem: HTTP ${response.status}`);
     }
+  },
+
+  /**
+   * Manually review a problem (not part of daily selection)
+   */
+  reviewProblem: async (
+    id: number,
+    colorResult: ReviewProblemRequest['colorResult']
+  ): Promise<Problem> => {
+    const response = await fetchJSON<ReviewProblemResponse>(
+      `/api/problems/${id}/review`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ colorResult }),
+      }
+    );
+    return response.problem;
   },
 };
 
