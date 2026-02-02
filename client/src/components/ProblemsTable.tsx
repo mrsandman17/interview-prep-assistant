@@ -14,7 +14,7 @@ interface ProblemsTableProps {
   onRowToggle: (problemId: number) => void;
 }
 
-type SortField = 'name' | 'color' | 'lastReviewed' | 'attemptCount';
+type SortField = 'name' | 'color' | 'lastReviewed' | 'createdAt' | 'attemptCount';
 type SortDirection = 'asc' | 'desc';
 
 const colorBadgeStyles: Record<ProblemColor, string> = {
@@ -39,8 +39,8 @@ const colorOrder: Record<ProblemColor, number> = {
 };
 
 export function ProblemsTable({ problems, onEdit, onDelete, isLoading, expandedRowId, onRowToggle }: ProblemsTableProps) {
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -70,6 +70,10 @@ export function ProblemsTable({ problems, onEdit, onDelete, isLoading, expandedR
         case 'lastReviewed':
           aValue = a.lastReviewed || '';
           bValue = b.lastReviewed || '';
+          break;
+        case 'createdAt':
+          aValue = a.createdAt || '';
+          bValue = b.createdAt || '';
           break;
         case 'attemptCount':
           aValue = a.attemptCount || 0;
@@ -199,6 +203,16 @@ export function ProblemsTable({ problems, onEdit, onDelete, isLoading, expandedR
               <th
                 scope="col"
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleSort('createdAt')}
+              >
+                <div className="flex items-center gap-2">
+                  <span>Date Added</span>
+                  <SortIcon field="createdAt" />
+                </div>
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
                 onClick={() => handleSort('attemptCount')}
               >
                 <div className="flex items-center gap-2">
@@ -266,6 +280,9 @@ export function ProblemsTable({ problems, onEdit, onDelete, isLoading, expandedR
                       {formatDate(problem.lastReviewed)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(problem.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {problem.attemptCount || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -292,7 +309,7 @@ export function ProblemsTable({ problems, onEdit, onDelete, isLoading, expandedR
                   </tr>
                   {isExpanded && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-4 bg-gray-50 border-t border-gray-200" data-testid="expanded-content">
+                      <td colSpan={7} className="px-6 py-4 bg-gray-50 border-t border-gray-200" data-testid="expanded-content">
                         <div className="text-sm">
                           <div className="font-semibold text-gray-600 mb-2">Key Insight:</div>
                           {problem.keyInsight ? (
