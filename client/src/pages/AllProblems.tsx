@@ -247,10 +247,11 @@ function AllProblemsContent() {
 
   const handleConfirmReview = async (
     problemId: number,
-    colorResult: Exclude<ProblemColor, 'gray'>
+    colorResult: Exclude<ProblemColor, 'gray'>,
+    keyInsight?: string
   ) => {
     try {
-      const updatedProblem = await problemsApi.reviewProblem(problemId, colorResult);
+      const updatedProblem = await problemsApi.reviewProblem(problemId, colorResult, keyInsight);
 
       // Update local state with functional update
       setProblems((prev) =>

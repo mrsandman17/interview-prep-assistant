@@ -166,13 +166,19 @@ export const problemsApi = {
    */
   reviewProblem: async (
     id: number,
-    colorResult: ReviewProblemRequest['colorResult']
+    colorResult: ReviewProblemRequest['colorResult'],
+    keyInsight?: string
   ): Promise<Problem> => {
+    const payload: any = { colorResult };
+    if (keyInsight !== undefined) {
+      payload.key_insight = keyInsight;
+    }
+
     const response = await fetchJSON<ReviewProblemResponse>(
       `/api/problems/${id}/review`,
       {
         method: 'POST',
-        body: JSON.stringify({ colorResult }),
+        body: JSON.stringify(payload),
       }
     );
     return response.problem;

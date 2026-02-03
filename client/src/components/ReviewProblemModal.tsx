@@ -5,7 +5,7 @@
  * Updates problem color, last reviewed date, and review count.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ColorButton } from './ColorButton';
 import type { Problem, ProblemColor } from '../api/types';
 
@@ -13,7 +13,7 @@ interface ReviewProblemModalProps {
   problem: Problem | null;
   isOpen: boolean;
   onClose: () => void;
-  onReview: (problemId: number, colorResult: Exclude<ProblemColor, 'gray'>) => Promise<void>;
+  onReview: (problemId: number, colorResult: Exclude<ProblemColor, 'gray'>, keyInsight?: string) => Promise<void>;
 }
 
 const colorLabels: Record<ProblemColor, string> = {
@@ -26,6 +26,19 @@ const colorLabels: Record<ProblemColor, string> = {
 export function ReviewProblemModal({ problem, isOpen, onClose, onReview }: ReviewProblemModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [keyInsight, setKeyInsight] = useState('');
+
+  // Initialize keyInsight when problem changes or modal opens
+  useEffect(() => {
+    if (isOpen && problem) {
+      setKeyInsight(problem.keyInsight || '');
+      setError(null);
+    } else if (!isOpen) {
+      // Reset state when modal closes
+      setKeyInsight('');
+      setError(null);
+    }
+  }, [isOpen, problem]);
 
   if (!isOpen || !problem) return null;
 
@@ -34,7 +47,7 @@ export function ReviewProblemModal({ problem, isOpen, onClose, onReview }: Revie
     setError(null);
 
     try {
-      await onReview(problem.id, color);
+      await onReview(problem.id, color, keyInsight || undefined);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to review problem');
@@ -107,6 +120,27 @@ export function ReviewProblemModal({ problem, isOpen, onClose, onReview }: Revie
             <p className="text-sm text-red-800">{error}</p>
           </div>
         )}
+
+        {/* Key Insight */}
+        <div className="mb-6">
+          <label htmlFor="keyInsight" className="block text-sm font-medium text-gray-700 mb-2">
+            Key Insight
+          </label>
+          <textarea
+            id="keyInsight"
+            value={keyInsight}
+            onChange={(e) => setKeyInsight(e.target.value)}
+            disabled={isSubmitting}
+            placeholder="Add notes about the problem approach, patterns, or key insights..."
+            rows={4}
+            className="
+              w-full px-3 py-2 border border-gray-300 rounded-md
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+              disabled:bg-gray-100 disabled:cursor-not-allowed
+              text-sm
+            "
+          />
+        </div>
 
         {/* Color Selection */}
         <div>
