@@ -35,6 +35,7 @@ export interface CompleteProblemResponse {
 
 export interface ReviewProblemRequest {
   colorResult: Exclude<ProblemColor, 'gray'>;
+  keyInsight?: string;
 }
 
 export interface ReviewProblemResponse {

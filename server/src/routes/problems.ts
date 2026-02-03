@@ -705,9 +705,10 @@ problemsRouter.delete('/:id', (req: Request, res: Response) => {
  * - Problem last_reviewed date
  * - Increments review_count
  * - Inserts attempt record
+ * - Optionally updates key_insight
  *
  * @param {number} id - Problem ID
- * @body { colorResult: 'orange' | 'yellow' | 'green' }
+ * @body { colorResult: 'orange' | 'yellow' | 'green', key_insight?: string }
  * @returns {Problem} Updated problem
  */
 problemsRouter.post('/:id/review', (req: Request, res: Response) => {
@@ -723,7 +724,7 @@ problemsRouter.post('/:id/review', (req: Request, res: Response) => {
       return;
     }
 
-    const { colorResult } = req.body as { colorResult: AttemptColorResult };
+    const { colorResult, key_insight } = req.body as { colorResult: AttemptColorResult; key_insight?: string };
 
     // Validate color result
     const validColors: AttemptColorResult[] = ['orange', 'yellow', 'green'];
@@ -731,6 +732,15 @@ problemsRouter.post('/:id/review', (req: Request, res: Response) => {
       res.status(400).json({
         error: 'Validation Error',
         message: 'Color result must be one of: orange, yellow, green',
+      });
+      return;
+    }
+
+    // Validate key_insight length if provided
+    if (key_insight !== undefined && key_insight.length > MAX_INSIGHT_LENGTH) {
+      res.status(400).json({
+        error: 'Validation Error',
+        message: `Key insight exceeds maximum length of ${MAX_INSIGHT_LENGTH} characters`,
       });
       return;
     }
@@ -758,7 +768,19 @@ problemsRouter.post('/:id/review', (req: Request, res: Response) => {
 
     // Use transaction for atomicity
     const reviewTransaction = db.transaction(() => {
-      return updateProblemReview(db, problemId, problem.color, colorResult, today);
+      const result = updateProblemReview(db, problemId, problem.color, colorResult, today);
+
+      // Update key_insight if provided
+      if (key_insight !== undefined) {
+        const updateInsightStmt = db.prepare('UPDATE problems SET key_insight = ? WHERE id = ?');
+        updateInsightStmt.run(key_insight || null, problemId);
+
+        // Fetch updated problem
+        const selectStmt = db.prepare('SELECT * FROM problems WHERE id = ?');
+        return { problem: selectStmt.get(problemId) as Problem };
+      }
+
+      return result;
     });
 
     const result = reviewTransaction();
