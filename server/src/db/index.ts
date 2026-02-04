@@ -24,6 +24,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { migrateAddReviewCount } from './migrations/001-add-review-count.js';
+import { migrateAddTopics } from './migrations/002-add-topics.js';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -84,6 +85,7 @@ export function initializeDatabase(dbPath: string): void {
 
   // Run migrations
   migrateAddReviewCount(dbInstance);
+  migrateAddTopics(dbInstance);
 }
 
 /**
@@ -148,4 +150,7 @@ export type {
   ProblemColor,
   AttemptColorResult,
   Theme,
+  Topic,
+  NewTopic,
+  ProblemWithTopics,
 } from './types';

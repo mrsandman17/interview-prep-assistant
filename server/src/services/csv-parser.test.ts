@@ -19,7 +19,7 @@ import { parseCSV, ParsedProblem, ParseResult } from './csv-parser';
 
 describe('CSV Parser - Valid CSV Cases', () => {
   it('should parse valid CSV with all fields', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://leetcode.com/problems/two-sum,gray,2024-01-15,Use a hash map
 Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,2024-01-10,Use a stack`;
 
@@ -34,6 +34,7 @@ Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,2024-01
       color: 'gray',
       last_reviewed: '2024-01-15',
       key_insight: 'Use a hash map',
+      topic_names: [],
     });
 
     expect(result.success[1]).toEqual({
@@ -42,11 +43,12 @@ Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,2024-01
       color: 'yellow',
       last_reviewed: '2024-01-10',
       key_insight: 'Use a stack',
+      topic_names: [],
     });
   });
 
   it('should handle missing optional fields (color, last_reviewed, key_insight)', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://leetcode.com/problems/two-sum,,,
 Valid Parentheses,https://leetcode.com/problems/valid-parentheses,orange,,`;
 
@@ -62,6 +64,7 @@ Valid Parentheses,https://leetcode.com/problems/valid-parentheses,orange,,`;
       color: 'gray', // default
       last_reviewed: null,
       key_insight: null,
+      topic_names: [],
     });
 
     // Second problem: color provided, others empty
@@ -71,11 +74,12 @@ Valid Parentheses,https://leetcode.com/problems/valid-parentheses,orange,,`;
       color: 'orange',
       last_reviewed: null,
       key_insight: null,
+      topic_names: [],
     });
   });
 
   it('should parse all valid color values (gray, orange, yellow, green)', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/1,gray,,
 Problem 2,https://leetcode.com/2,orange,,
 Problem 3,https://leetcode.com/3,yellow,,
@@ -93,7 +97,7 @@ Problem 4,https://leetcode.com/4,green,,`;
   });
 
   it('should handle quoted fields with commas inside', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 "Two Sum, Three Sum",https://leetcode.com/problems/two-sum,gray,,"Use a hash map, or two pointers"`;
 
     const result = parseCSV(csv);
@@ -106,7 +110,7 @@ Problem 4,https://leetcode.com/4,green,,`;
   });
 
   it('should handle valid ISO date formats', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/1,gray,2024-01-15,
 Problem 2,https://leetcode.com/2,gray,2023-12-25,
 Problem 3,https://leetcode.com/3,gray,2024-02-29,`;
@@ -124,7 +128,7 @@ Problem 3,https://leetcode.com/3,gray,2024-02-29,`;
 
 describe('CSV Parser - Invalid Color Handling', () => {
   it('should return errors for invalid color values', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/1,red,,
 Problem 2,https://leetcode.com/2,blue,,
 Problem 3,https://leetcode.com/3,purple,,
@@ -155,7 +159,7 @@ Problem 4,https://leetcode.com/4,GRAY,,`;
   });
 
   it('should default to gray for empty color field', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/1,,,`;
 
     const result = parseCSV(csv);
@@ -167,7 +171,7 @@ Problem 1,https://leetcode.com/1,,,`;
 
 describe('CSV Parser - Date Validation', () => {
   it('should return error for invalid date formats', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/1,gray,2024-13-01,
 Problem 2,https://leetcode.com/2,gray,01/15/2024,
 Problem 3,https://leetcode.com/3,gray,invalid-date,`;
@@ -194,7 +198,7 @@ Problem 3,https://leetcode.com/3,gray,invalid-date,`;
   });
 
   it('should accept empty date field', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/1,gray,,`;
 
     const result = parseCSV(csv);
@@ -206,7 +210,7 @@ Problem 1,https://leetcode.com/1,gray,,`;
 
 describe('CSV Parser - Required Field Validation', () => {
   it('should return error for missing problem name', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 ,https://leetcode.com/1,gray,,`;
 
     const result = parseCSV(csv);
@@ -220,7 +224,7 @@ describe('CSV Parser - Required Field Validation', () => {
   });
 
   it('should return error for missing link', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,,gray,,`;
 
     const result = parseCSV(csv);
@@ -234,7 +238,7 @@ Problem 1,,gray,,`;
   });
 
   it('should return error for invalid URL format', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,not-a-url,gray,,
 Problem 2,ftp://invalid.com,gray,,`;
 
@@ -255,7 +259,7 @@ Problem 2,ftp://invalid.com,gray,,`;
   });
 
   it('should accept valid http and https URLs', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/problems/two-sum,gray,,
 Problem 2,http://leetcode.com/problems/valid-parentheses,gray,,`;
 
@@ -295,7 +299,7 @@ describe('CSV Parser - Empty and Malformed CSV', () => {
   });
 
   it('should handle CSV with missing columns', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/1
 Problem 2,https://leetcode.com/2,gray`;
 
@@ -310,7 +314,7 @@ Problem 2,https://leetcode.com/2,gray`;
 
   it('should return structured error for completely malformed CSV (row 0)', () => {
     // CSV with unclosed quotes that cannot be parsed (strict mode)
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 "This has unclosed quote,https://leetcode.com/1,gray,,
 Normal row,https://leetcode.com/2,gray,,`;
 
@@ -342,7 +346,7 @@ Normal row,https://leetcode.com/2,gray,,`;
 
 describe('CSV Parser - Duplicate Detection', () => {
   it('should detect duplicate links and return errors', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://leetcode.com/problems/two-sum,gray,,
 Two Sum Copy,https://leetcode.com/problems/two-sum,yellow,,`;
 
@@ -360,7 +364,7 @@ Two Sum Copy,https://leetcode.com/problems/two-sum,yellow,,`;
   });
 
   it('should detect multiple duplicates', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/1,gray,,
 Problem 2,https://leetcode.com/2,gray,,
 Problem 1 Copy,https://leetcode.com/1,yellow,,
@@ -383,7 +387,7 @@ Problem 2 Copy,https://leetcode.com/2,orange,,`;
   });
 
   it('should detect duplicates with trailing slash normalization', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://leetcode.com/problems/two-sum,gray,,
 Two Sum Copy,https://leetcode.com/problems/two-sum/,yellow,,`;
 
@@ -399,7 +403,7 @@ Two Sum Copy,https://leetcode.com/problems/two-sum/,yellow,,`;
   });
 
   it('should detect duplicates with case normalization', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://LeetCode.com/problems/two-sum,gray,,
 Two Sum Copy,https://leetcode.com/problems/two-sum,yellow,,`;
 
@@ -415,7 +419,7 @@ Two Sum Copy,https://leetcode.com/problems/two-sum,yellow,,`;
   });
 
   it('should detect duplicates with both case and trailing slash differences', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://LeetCode.com/problems/two-sum/,gray,,
 Two Sum Copy,https://leetcode.com/PROBLEMS/two-sum,yellow,,`;
 
@@ -431,7 +435,7 @@ Two Sum Copy,https://leetcode.com/PROBLEMS/two-sum,yellow,,`;
   });
 
   it('should preserve original URL format in success result', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://LeetCode.com/problems/TWO-SUM/,gray,,`;
 
     const result = parseCSV(csv);
@@ -444,7 +448,7 @@ Two Sum,https://LeetCode.com/problems/TWO-SUM/,gray,,`;
 
 describe('CSV Parser - Mixed Valid and Invalid Rows', () => {
   it('should return both successful parses and errors for mixed CSV', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Valid Problem,https://leetcode.com/1,gray,,Good problem
 ,https://leetcode.com/2,gray,,Missing name
 Another Valid,https://leetcode.com/3,yellow,2024-01-15,Another good one
@@ -486,7 +490,7 @@ describe('CSV Parser - Edge Cases', () => {
   });
 
   it('should trim whitespace from fields', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
   Two Sum  ,  https://leetcode.com/1  ,  gray  ,,  Use hash map  `;
 
     const result = parseCSV(csv);
@@ -499,7 +503,7 @@ describe('CSV Parser - Edge Cases', () => {
   });
 
   it('should handle URLs with query parameters', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://leetcode.com/problems/two-sum?tab=description,gray,,`;
 
     const result = parseCSV(csv);
@@ -510,7 +514,7 @@ Two Sum,https://leetcode.com/problems/two-sum?tab=description,gray,,`;
 
   it('should handle very long key insights', () => {
     const longInsight = 'A'.repeat(1000);
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://leetcode.com/1,gray,,${longInsight}`;
 
     const result = parseCSV(csv);
@@ -520,7 +524,7 @@ Two Sum,https://leetcode.com/1,gray,,${longInsight}`;
   });
 
   it('should handle escaped quotes in quoted fields', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 "Problem with ""quotes""",https://leetcode.com/1,gray,,"Insight with ""quotes"""`;
 
     const result = parseCSV(csv);
@@ -533,7 +537,7 @@ Two Sum,https://leetcode.com/1,gray,,${longInsight}`;
 
 describe('CSV Parser - Case Sensitivity', () => {
   it('should be case-sensitive for color values and return errors', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/1,Gray,,
 Problem 2,https://leetcode.com/2,ORANGE,,
 Problem 3,https://leetcode.com/3,Yellow,,`;
@@ -561,7 +565,7 @@ Two Sum,https://leetcode.com/1,gray,,`;
 
 describe('CSV Parser - Security: CSV Injection', () => {
   it('should sanitize fields starting with formula injection characters', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 =MALICIOUS(),https://leetcode.com/1,gray,,Normal insight
 +MALICIOUS(),https://leetcode.com/2,gray,,Normal insight
 -MALICIOUS(),https://leetcode.com/3,gray,,Normal insight
@@ -578,7 +582,7 @@ describe('CSV Parser - Security: CSV Injection', () => {
   });
 
   it('should sanitize key_insight field for formula injection', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/1,gray,,=SUM(A1:A10)
 Problem 2,https://leetcode.com/2,gray,,+cmd|'/c calc'!A1`;
 
@@ -592,7 +596,7 @@ Problem 2,https://leetcode.com/2,gray,,+cmd|'/c calc'!A1`;
   it('should handle fields with whitespace (tabs/CR are trimmed by CSV parser)', () => {
     // Note: The CSV parser's trim option removes leading/trailing whitespace including tabs/CR
     // even when quoted. This is expected behavior - we sanitize what remains after trimming.
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 "	TAB_PREFIX",https://leetcode.com/1,gray,,
 " SPACE_PREFIX",https://leetcode.com/2,gray,,`;
 
@@ -606,7 +610,7 @@ Problem 2,https://leetcode.com/2,gray,,+cmd|'/c calc'!A1`;
   });
 
   it('should not sanitize normal fields without dangerous prefixes', () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://leetcode.com/1,gray,,Use = operator for comparison
 Problem with - dash,https://leetcode.com/2,gray,,Minus in middle is fine`;
 
@@ -622,7 +626,7 @@ Problem with - dash,https://leetcode.com/2,gray,,Minus in middle is fine`;
 describe('CSV Parser - Field Length Validation', () => {
   it('should return error for problem name exceeding 500 characters', () => {
     const longName = 'A'.repeat(501);
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 ${longName},https://leetcode.com/1,gray,,`;
 
     const result = parseCSV(csv);
@@ -637,7 +641,7 @@ ${longName},https://leetcode.com/1,gray,,`;
 
   it('should accept problem name at exactly 500 characters', () => {
     const maxName = 'A'.repeat(500);
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 ${maxName},https://leetcode.com/1,gray,,`;
 
     const result = parseCSV(csv);
@@ -649,7 +653,7 @@ ${maxName},https://leetcode.com/1,gray,,`;
 
   it('should return error for key_insight exceeding 5000 characters', () => {
     const longInsight = 'B'.repeat(5001);
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/1,gray,,${longInsight}`;
 
     const result = parseCSV(csv);
@@ -664,7 +668,7 @@ Problem 1,https://leetcode.com/1,gray,,${longInsight}`;
 
   it('should accept key_insight at exactly 5000 characters', () => {
     const maxInsight = 'B'.repeat(5000);
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,https://leetcode.com/1,gray,,${maxInsight}`;
 
     const result = parseCSV(csv);
@@ -676,7 +680,7 @@ Problem 1,https://leetcode.com/1,gray,,${maxInsight}`;
 
   it('should return error for URL exceeding 2048 characters', () => {
     const longUrl = 'https://leetcode.com/' + 'a'.repeat(2030); // Total > 2048
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,${longUrl},gray,,`;
 
     const result = parseCSV(csv);
@@ -695,7 +699,7 @@ Problem 1,${longUrl},gray,,`;
     const padding = 'a'.repeat(2048 - baseUrl.length);
     const maxUrl = baseUrl + padding;
 
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Problem 1,${maxUrl},gray,,`;
 
     const result = parseCSV(csv);

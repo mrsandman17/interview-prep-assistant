@@ -58,9 +58,16 @@ problemsRouter.get('/', (req: Request, res: Response) => {
       SELECT
         p.*,
         p.review_count as reviewCount,
-        COUNT(a.id) as attemptCount
+        COUNT(DISTINCT a.id) as attemptCount,
+        json_group_array(
+          CASE WHEN t.id IS NOT NULL THEN
+            json_object('id', t.id, 'name', t.name, 'created_at', t.created_at)
+          END
+        ) FILTER (WHERE t.id IS NOT NULL) as topics
       FROM problems p
       LEFT JOIN attempts a ON p.id = a.problem_id
+      LEFT JOIN problem_topics pt ON p.id = pt.problem_id
+      LEFT JOIN topics t ON pt.topic_id = t.id
       WHERE 1=1
     `;
     const params: SQLiteParameter[] = [];
@@ -92,7 +99,13 @@ problemsRouter.get('/', (req: Request, res: Response) => {
     query += ' GROUP BY p.id ORDER BY p.created_at DESC';
 
     const stmt = db.prepare(query);
-    const problems = stmt.all(...params) as ProblemWithAttemptCount[];
+    const rawResults = stmt.all(...params) as Array<ProblemWithAttemptCount & { topics: string }>;
+
+    // Parse topics JSON string
+    const problems = rawResults.map(row => ({
+      ...row,
+      topics: row.topics ? JSON.parse(row.topics) : [],
+    }));
 
     res.status(200).json(problems);
   } catch (error) {
@@ -120,7 +133,7 @@ problemsRouter.get('/', (req: Request, res: Response) => {
  */
 problemsRouter.post('/', (req: Request, res: Response) => {
   try {
-    const { name, link, color, key_insight } = req.body as CreateProblemRequest;
+    const { name, link, color, key_insight, topic_ids } = req.body as CreateProblemRequest;
 
     // Validate required fields
     if (!name || !link) {
@@ -221,22 +234,89 @@ problemsRouter.post('/', (req: Request, res: Response) => {
       return;
     }
 
-    // Insert problem
-    const insertStmt = db.prepare(`
-      INSERT INTO problems (name, link, color, key_insight)
-      VALUES (?, ?, ?, ?)
-    `);
+    // Validate topic_ids if provided
+    if (topic_ids !== undefined) {
+      if (!Array.isArray(topic_ids)) {
+        res.status(400).json({
+          error: 'Validation Error',
+          message: 'topic_ids must be an array',
+        });
+        return;
+      }
 
-    const result = insertStmt.run(
-      trimmedName,
-      trimmedLink,
-      color || 'gray',
-      key_insight || null
-    );
+      if (topic_ids.length > 0) {
+        // Check that all topic IDs exist
+        const placeholders = topic_ids.map(() => '?').join(',');
+        const topicCheckStmt = db.prepare(`
+          SELECT COUNT(*) as count FROM topics WHERE id IN (${placeholders})
+        `);
+        const { count } = topicCheckStmt.get(...topic_ids) as { count: number };
 
-    // Fetch the created problem
-    const selectStmt = db.prepare('SELECT * FROM problems WHERE id = ?');
-    const problem = selectStmt.get(result.lastInsertRowid) as Problem;
+        if (count !== topic_ids.length) {
+          res.status(400).json({
+            error: 'Validation Error',
+            message: 'One or more topic IDs do not exist',
+          });
+          return;
+        }
+      }
+    }
+
+    // Use transaction for atomicity
+    const insertTransaction = db.transaction(() => {
+      // Insert problem
+      const insertStmt = db.prepare(`
+        INSERT INTO problems (name, link, color, key_insight)
+        VALUES (?, ?, ?, ?)
+      `);
+
+      const result = insertStmt.run(
+        trimmedName,
+        trimmedLink,
+        color || 'gray',
+        key_insight || null
+      );
+
+      const problemId = result.lastInsertRowid as number;
+
+      // Insert topic associations if provided
+      if (topic_ids && topic_ids.length > 0) {
+        const insertTopicStmt = db.prepare(`
+          INSERT INTO problem_topics (problem_id, topic_id) VALUES (?, ?)
+        `);
+
+        for (const topicId of topic_ids) {
+          insertTopicStmt.run(problemId, topicId);
+        }
+      }
+
+      return problemId;
+    });
+
+    const problemId = insertTransaction();
+
+    // Fetch the created problem with topics
+    const selectQuery = `
+      SELECT
+        p.*,
+        json_group_array(
+          CASE WHEN t.id IS NOT NULL THEN
+            json_object('id', t.id, 'name', t.name, 'created_at', t.created_at)
+          END
+        ) FILTER (WHERE t.id IS NOT NULL) as topics
+      FROM problems p
+      LEFT JOIN problem_topics pt ON p.id = pt.problem_id
+      LEFT JOIN topics t ON pt.topic_id = t.id
+      WHERE p.id = ?
+      GROUP BY p.id
+    `;
+    const selectStmt = db.prepare(selectQuery);
+    const rawResult = selectStmt.get(problemId) as Problem & { topics: string };
+
+    const problem = {
+      ...rawResult,
+      topics: rawResult.topics ? JSON.parse(rawResult.topics) : [],
+    };
 
     res.status(201).json(problem);
   } catch (error) {
@@ -256,7 +336,10 @@ problemsRouter.post('/', (req: Request, res: Response) => {
  * Content-Type: text/csv or text/plain
  *
  * CSV Format:
- * Problem,Link,Color,LastReviewed,KeyInsight
+ * Problem,Link,Color,LastReviewed,KeyInsight,Topics
+ *
+ * Topics column is optional and should contain comma-separated topic names.
+ * Topics will be created if they don't exist.
  *
  * @returns {ImportResult} Summary of import operation
  */
@@ -296,10 +379,25 @@ problemsRouter.post('/import', (req: Request, res: Response) => {
         existingProblems.map(p => p.link.toLowerCase().replace(/\/$/, ''))
       );
 
+      // Get all existing topics for resolution
+      const topicsStmt = db.prepare('SELECT id, name FROM topics');
+      const existingTopics = topicsStmt.all() as Array<{ id: number; name: string }>;
+      const topicNameToId = new Map(
+        existingTopics.map(t => [t.name.toLowerCase(), t.id])
+      );
+
       // Insert successfully parsed problems
       const insertStmt = db.prepare(`
         INSERT INTO problems (name, link, color, key_insight, last_reviewed)
         VALUES (?, ?, ?, ?, ?)
+      `);
+
+      const insertTopicStmt = db.prepare(`
+        INSERT INTO problem_topics (problem_id, topic_id) VALUES (?, ?)
+      `);
+
+      const createTopicStmt = db.prepare(`
+        INSERT INTO topics (name) VALUES (?) RETURNING id
       `);
 
       for (const problem of problems) {
@@ -312,13 +410,35 @@ problemsRouter.post('/import', (req: Request, res: Response) => {
         }
 
         try {
-          insertStmt.run(
+          const result = insertStmt.run(
             problem.name,
             problem.link,
             problem.color,
             problem.key_insight,
             problem.last_reviewed
           );
+          const problemId = result.lastInsertRowid as number;
+
+          // Handle topics if provided
+          if (problem.topic_names && problem.topic_names.length > 0) {
+            for (const topicName of problem.topic_names) {
+              const normalizedTopicName = topicName.toLowerCase();
+
+              // Resolve or create topic
+              let topicId = topicNameToId.get(normalizedTopicName);
+
+              if (!topicId) {
+                // Create new topic
+                const newTopic = createTopicStmt.get(topicName) as { id: number };
+                topicId = newTopic.id;
+                topicNameToId.set(normalizedTopicName, topicId);
+              }
+
+              // Associate problem with topic
+              insertTopicStmt.run(problemId, topicId);
+            }
+          }
+
           imported++;
           existingLinks.add(normalizedLink);
         } catch (error: any) {
@@ -365,10 +485,29 @@ problemsRouter.get('/export', (req: Request, res: Response) => {
   try {
     const db = getDatabase();
 
-    // Fetch all problems ordered by creation date (newest first)
-    const query = 'SELECT * FROM problems ORDER BY created_at DESC';
+    // Fetch all problems with topics ordered by creation date (newest first)
+    const query = `
+      SELECT
+        p.*,
+        json_group_array(
+          CASE WHEN t.id IS NOT NULL THEN
+            json_object('id', t.id, 'name', t.name, 'created_at', t.created_at)
+          END
+        ) FILTER (WHERE t.id IS NOT NULL) as topics
+      FROM problems p
+      LEFT JOIN problem_topics pt ON p.id = pt.problem_id
+      LEFT JOIN topics t ON pt.topic_id = t.id
+      GROUP BY p.id
+      ORDER BY p.created_at DESC
+    `;
     const stmt = db.prepare(query);
-    const problems = stmt.all() as Problem[];
+    const rawResults = stmt.all() as Array<Problem & { topics: string }>;
+
+    // Parse topics JSON
+    const problems = rawResults.map(row => ({
+      ...row,
+      topics: row.topics ? JSON.parse(row.topics) : [],
+    }));
 
     // Generate CSV content
     const csvContent = generateCSV(problems);
@@ -417,11 +556,25 @@ problemsRouter.get('/:id', (req: Request, res: Response) => {
 
     const db = getDatabase();
 
-    // Fetch problem
-    const problemStmt = db.prepare('SELECT * FROM problems WHERE id = ?');
-    const problem = problemStmt.get(problemId) as Problem | undefined;
+    // Fetch problem with topics
+    const problemQuery = `
+      SELECT
+        p.*,
+        json_group_array(
+          CASE WHEN t.id IS NOT NULL THEN
+            json_object('id', t.id, 'name', t.name, 'created_at', t.created_at)
+          END
+        ) FILTER (WHERE t.id IS NOT NULL) as topics
+      FROM problems p
+      LEFT JOIN problem_topics pt ON p.id = pt.problem_id
+      LEFT JOIN topics t ON pt.topic_id = t.id
+      WHERE p.id = ?
+      GROUP BY p.id
+    `;
+    const problemStmt = db.prepare(problemQuery);
+    const rawProblem = problemStmt.get(problemId) as (Problem & { topics: string }) | undefined;
 
-    if (!problem) {
+    if (!rawProblem) {
       res.status(404).json({
         error: 'Not Found',
         message: 'Problem not found',
@@ -438,7 +591,8 @@ problemsRouter.get('/:id', (req: Request, res: Response) => {
     const attempts = attemptsStmt.all(problemId) as Attempt[];
 
     const response: ProblemWithAttempts = {
-      ...problem,
+      ...rawProblem,
+      topics: rawProblem.topics ? JSON.parse(rawProblem.topics) : [],
       attempts,
     };
 
@@ -495,11 +649,11 @@ problemsRouter.patch('/:id', (req: Request, res: Response) => {
       return;
     }
 
-    const { name, link, color, key_insight, last_reviewed } = req.body as UpdateProblemRequest;
+    const { name, link, color, key_insight, last_reviewed, topic_ids } = req.body as UpdateProblemRequest;
 
     // Validate at least one field is provided
     if (name === undefined && link === undefined && color === undefined &&
-        key_insight === undefined && last_reviewed === undefined) {
+        key_insight === undefined && last_reviewed === undefined && topic_ids === undefined) {
       res.status(400).json({
         error: 'Validation Error',
         message: 'At least one field must be provided for update',
@@ -600,17 +754,90 @@ problemsRouter.patch('/:id', (req: Request, res: Response) => {
       params.push(last_reviewed);
     }
 
-    // Add problem ID to params
-    params.push(problemId);
+    // Validate topic_ids if provided
+    if (topic_ids !== undefined) {
+      if (!Array.isArray(topic_ids)) {
+        res.status(400).json({
+          error: 'Validation Error',
+          message: 'topic_ids must be an array',
+        });
+        return;
+      }
 
-    // Execute update
-    const updateQuery = `UPDATE problems SET ${updates.join(', ')} WHERE id = ?`;
-    const updateStmt = db.prepare(updateQuery);
-    updateStmt.run(...params);
+      if (topic_ids.length > 0) {
+        // Check that all topic IDs exist
+        const placeholders = topic_ids.map(() => '?').join(',');
+        const topicCheckStmt = db.prepare(`
+          SELECT COUNT(*) as count FROM topics WHERE id IN (${placeholders})
+        `);
+        const { count } = topicCheckStmt.get(...topic_ids) as { count: number };
 
-    // Fetch and return updated problem
-    const selectStmt = db.prepare('SELECT * FROM problems WHERE id = ?');
-    const updatedProblem = selectStmt.get(problemId) as Problem;
+        if (count !== topic_ids.length) {
+          res.status(400).json({
+            error: 'Validation Error',
+            message: 'One or more topic IDs do not exist',
+          });
+          return;
+        }
+      }
+    }
+
+    // Use transaction for atomicity
+    const updateTransaction = db.transaction(() => {
+      // Update problem fields if any
+      if (updates.length > 0) {
+        // Add problem ID to params
+        params.push(problemId);
+
+        // Execute update
+        const updateQuery = `UPDATE problems SET ${updates.join(', ')} WHERE id = ?`;
+        const updateStmt = db.prepare(updateQuery);
+        updateStmt.run(...params);
+      }
+
+      // Update topic associations if provided
+      if (topic_ids !== undefined) {
+        // Delete existing associations
+        const deleteTopicsStmt = db.prepare('DELETE FROM problem_topics WHERE problem_id = ?');
+        deleteTopicsStmt.run(problemId);
+
+        // Insert new associations
+        if (topic_ids.length > 0) {
+          const insertTopicStmt = db.prepare(`
+            INSERT INTO problem_topics (problem_id, topic_id) VALUES (?, ?)
+          `);
+
+          for (const topicId of topic_ids) {
+            insertTopicStmt.run(problemId, topicId);
+          }
+        }
+      }
+    });
+
+    updateTransaction();
+
+    // Fetch and return updated problem with topics
+    const selectQuery = `
+      SELECT
+        p.*,
+        json_group_array(
+          CASE WHEN t.id IS NOT NULL THEN
+            json_object('id', t.id, 'name', t.name, 'created_at', t.created_at)
+          END
+        ) FILTER (WHERE t.id IS NOT NULL) as topics
+      FROM problems p
+      LEFT JOIN problem_topics pt ON p.id = pt.problem_id
+      LEFT JOIN topics t ON pt.topic_id = t.id
+      WHERE p.id = ?
+      GROUP BY p.id
+    `;
+    const selectStmt = db.prepare(selectQuery);
+    const rawResult = selectStmt.get(problemId) as Problem & { topics: string };
+
+    const updatedProblem = {
+      ...rawResult,
+      topics: rawResult.topics ? JSON.parse(rawResult.topics) : [],
+    };
 
     res.status(200).json(updatedProblem);
   } catch (error) {

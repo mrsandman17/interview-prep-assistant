@@ -107,3 +107,26 @@ export interface UpdateSettings {
   daily_problem_count?: number;
   theme?: Theme;
 }
+
+/**
+ * Topic record from the database
+ */
+export interface Topic {
+  id: number;
+  name: string;
+  created_at: string; // ISO datetime string
+}
+
+/**
+ * Input for creating a new topic
+ */
+export interface NewTopic {
+  name: string;
+}
+
+/**
+ * Problem with associated topics
+ */
+export interface ProblemWithTopics extends Problem {
+  topics: Topic[];
+}

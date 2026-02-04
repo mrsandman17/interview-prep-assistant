@@ -2,7 +2,7 @@
  * TypeScript types for API request and response payloads
  */
 
-import { Problem, ProblemColor, Attempt, AttemptColorResult } from '../db/types';
+import { Problem, ProblemColor, Attempt, AttemptColorResult, Topic, ProblemWithTopics } from '../db/types';
 
 /**
  * Request body for creating a single problem
@@ -12,6 +12,7 @@ export interface CreateProblemRequest {
   link: string;
   color?: ProblemColor;
   key_insight?: string;
+  topic_ids?: number[];
 }
 
 /**
@@ -23,6 +24,7 @@ export interface UpdateProblemRequest {
   color?: ProblemColor;
   key_insight?: string;
   last_reviewed?: string; // ISO date string
+  topic_ids?: number[];
 }
 
 /**

@@ -23,7 +23,7 @@ describe('generateCSV', () => {
       const problems: Problem[] = [];
       const result = generateCSV(problems);
 
-      expect(result).toBe('Problem,Link,Color,LastReviewed,KeyInsight\n');
+      expect(result).toBe('Problem,Link,Color,LastReviewed,KeyInsight,Topics\n');
     });
 
     it('should handle null LastReviewed and KeyInsight fields', () => {
@@ -42,8 +42,8 @@ describe('generateCSV', () => {
       const result = generateCSV(problems);
       const lines = result.split('\n');
 
-      expect(lines[0]).toBe('Problem,Link,Color,LastReviewed,KeyInsight');
-      expect(lines[1]).toBe('Two Sum,https://leetcode.com/problems/two-sum,gray,,');
+      expect(lines[0]).toBe('Problem,Link,Color,LastReviewed,KeyInsight,Topics');
+      expect(lines[1]).toBe('Two Sum,https://leetcode.com/problems/two-sum,gray,,,');
     });
 
     it('should handle null LastReviewed with non-null KeyInsight', () => {
@@ -62,7 +62,7 @@ describe('generateCSV', () => {
       const result = generateCSV(problems);
       const lines = result.split('\n');
 
-      expect(lines[1]).toBe('Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,,Use a stack');
+      expect(lines[1]).toBe('Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,,Use a stack,');
     });
 
     it('should handle non-null LastReviewed with null KeyInsight', () => {
@@ -81,7 +81,7 @@ describe('generateCSV', () => {
       const result = generateCSV(problems);
       const lines = result.split('\n');
 
-      expect(lines[1]).toBe('Merge Intervals,https://leetcode.com/problems/merge-intervals,orange,2024-01-15,');
+      expect(lines[1]).toBe('Merge Intervals,https://leetcode.com/problems/merge-intervals,orange,2024-01-15,,');
     });
   });
 
@@ -103,7 +103,7 @@ describe('generateCSV', () => {
       const lines = result.split('\n');
 
       // Quotes should be escaped by doubling them and field wrapped in quotes
-      expect(lines[1]).toBe('"Find ""Best"" Solution",https://leetcode.com/problems/test,gray,,');
+      expect(lines[1]).toBe('"Find ""Best"" Solution",https://leetcode.com/problems/test,gray,,,');
     });
 
     it('should wrap fields containing commas in quotes', () => {
@@ -122,7 +122,7 @@ describe('generateCSV', () => {
       const result = generateCSV(problems);
       const lines = result.split('\n');
 
-      expect(lines[1]).toBe('"Problem A, B, C",https://leetcode.com/problems/test,gray,,"Use arrays, maps, and sets"');
+      expect(lines[1]).toBe('"Problem A, B, C",https://leetcode.com/problems/test,gray,,"Use arrays, maps, and sets",');
     });
 
     it('should wrap fields containing newlines in quotes', () => {
@@ -322,8 +322,8 @@ describe('generateCSV', () => {
       const result = generateCSV(problems);
       const lines = result.split('\n');
 
-      expect(lines[0]).toBe('Problem,Link,Color,LastReviewed,KeyInsight');
-      expect(lines[1]).toBe('Test Problem,https://leetcode.com/problems/test,yellow,2024-01-15,Test insight');
+      expect(lines[0]).toBe('Problem,Link,Color,LastReviewed,KeyInsight,Topics');
+      expect(lines[1]).toBe('Test Problem,https://leetcode.com/problems/test,yellow,2024-01-15,Test insight,');
     });
   });
 
@@ -363,10 +363,10 @@ describe('generateCSV', () => {
       const lines = result.split('\n').filter(line => line.length > 0);
 
       expect(lines).toHaveLength(4); // 1 header + 3 data rows
-      expect(lines[0]).toBe('Problem,Link,Color,LastReviewed,KeyInsight');
-      expect(lines[1]).toBe('Two Sum,https://leetcode.com/problems/two-sum,gray,,');
-      expect(lines[2]).toBe('Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,2024-01-15,Use a stack');
-      expect(lines[3]).toBe('Merge Intervals,https://leetcode.com/problems/merge-intervals,green,2024-01-20,Sort by start time');
+      expect(lines[0]).toBe('Problem,Link,Color,LastReviewed,KeyInsight,Topics');
+      expect(lines[1]).toBe('Two Sum,https://leetcode.com/problems/two-sum,gray,,,');
+      expect(lines[2]).toBe('Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,2024-01-15,Use a stack,');
+      expect(lines[3]).toBe('Merge Intervals,https://leetcode.com/problems/merge-intervals,green,2024-01-20,Sort by start time,');
     });
 
     it('should handle multiple problems with special characters', () => {
@@ -480,7 +480,7 @@ describe('generateCSV', () => {
       const lines = result.split('\n');
 
       // Empty string should result in empty field
-      expect(lines[1]).toBe('Normal Name,https://leetcode.com/problems/test,gray,,');
+      expect(lines[1]).toBe('Normal Name,https://leetcode.com/problems/test,gray,,,');
     });
 
     it('should handle very long problem names', () => {

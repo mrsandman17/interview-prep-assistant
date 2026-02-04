@@ -1,10 +1,10 @@
 import { stringify } from 'csv-stringify/sync';
-import { Problem } from '../db/types.js';
+import { Problem, ProblemWithTopics, Topic } from '../db/types.js';
 
 /**
  * CSV field order for export
  */
-const CSV_COLUMNS = ['Problem', 'Link', 'Color', 'LastReviewed', 'KeyInsight'];
+const CSV_COLUMNS = ['Problem', 'Link', 'Color', 'LastReviewed', 'KeyInsight', 'Topics'];
 
 /**
  * Sanitizes CSV field to prevent formula injection
@@ -33,24 +33,25 @@ function sanitizeCSVField(field: string | null): string {
 /**
  * Generates CSV content from an array of problems
  *
- * @param problems - Array of Problem objects to export
+ * @param problems - Array of Problem or ProblemWithTopics objects to export
  * @returns CSV string with header row and data
  *
  * @example
  * ```typescript
  * const problems = [
  *   { id: 1, name: 'Two Sum', link: 'https://leetcode.com/problems/two-sum',
- *     color: 'gray', key_insight: 'Use hash map', last_reviewed: null, created_at: '2024-01-01' }
+ *     color: 'gray', key_insight: 'Use hash map', last_reviewed: null,
+ *     created_at: '2024-01-01', topics: [{ id: 1, name: 'Arrays', created_at: '2024-01-01' }] }
  * ];
  *
  * const csv = generateCSV(problems);
  * console.log(csv);
  * // Output:
- * // Problem,Link,Color,LastReviewed,KeyInsight
- * // Two Sum,https://leetcode.com/problems/two-sum,gray,,'Use hash map'
+ * // Problem,Link,Color,LastReviewed,KeyInsight,Topics
+ * // Two Sum,https://leetcode.com/problems/two-sum,gray,,'Use hash map',Arrays
  * ```
  */
-export function generateCSV(problems: Problem[]): string {
+export function generateCSV(problems: (Problem | ProblemWithTopics)[]): string {
   // Handle empty array
   if (problems.length === 0) {
     // Return just the header row
@@ -58,13 +59,21 @@ export function generateCSV(problems: Problem[]): string {
   }
 
   // Transform problems into CSV records
-  const records = problems.map(problem => ({
-    Problem: sanitizeCSVField(problem.name),
-    Link: sanitizeCSVField(problem.link),
-    Color: sanitizeCSVField(problem.color),
-    LastReviewed: sanitizeCSVField(problem.last_reviewed),
-    KeyInsight: sanitizeCSVField(problem.key_insight),
-  }));
+  const records = problems.map(problem => {
+    // Get topics if available
+    const topicsStr = 'topics' in problem && problem.topics
+      ? problem.topics.map((t: Topic) => t.name).join(', ')
+      : '';
+
+    return {
+      Problem: sanitizeCSVField(problem.name),
+      Link: sanitizeCSVField(problem.link),
+      Color: sanitizeCSVField(problem.color),
+      LastReviewed: sanitizeCSVField(problem.last_reviewed),
+      KeyInsight: sanitizeCSVField(problem.key_insight),
+      Topics: sanitizeCSVField(topicsStr),
+    };
+  });
 
   // Generate CSV with header
   return stringify(records, {

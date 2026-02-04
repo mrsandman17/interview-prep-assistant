@@ -4,6 +4,12 @@
 
 export type ProblemColor = 'gray' | 'orange' | 'yellow' | 'green';
 
+export interface Topic {
+  id: number;
+  name: string;
+  createdAt: string;
+}
+
 export interface Problem {
   id: number;
   name: string;
@@ -14,6 +20,7 @@ export interface Problem {
   createdAt: string;
   reviewCount: number;
   attemptCount?: number; // Deprecated, kept for backwards compatibility
+  topics: Topic[];
 }
 
 export interface DailyProblem extends Problem {
@@ -62,6 +69,7 @@ export interface CreateProblemRequest {
   link: string;
   keyInsight?: string;
   color?: ProblemColor;
+  topicIds?: number[];
 }
 
 export interface UpdateProblemRequest {
@@ -69,6 +77,7 @@ export interface UpdateProblemRequest {
   link?: string;
   keyInsight?: string;
   color?: ProblemColor;
+  topicIds?: number[];
 }
 
 export interface ImportProblemsRequest {

@@ -235,6 +235,132 @@ function randomSelect<T>(array: T[], count: number): T[] {
 }
 
 /**
+ * Selects problems with topic diversity constraint
+ *
+ * Ensures a maximum of `maxPerTopic` problems per topic in the selection.
+ * This prevents daily selections from being too repetitive in terms of topics.
+ *
+ * Algorithm:
+ * 1. Fetch topics for each problem in the pool
+ * 2. Greedy selection with diversity constraint:
+ *    - Shuffle pool for randomness
+ *    - Track topic counts as we select
+ *    - Prefer problems that don't violate max-per-topic limit
+ *    - Fall back to any remaining if constraint can't be met
+ * 3. Return selected problems
+ *
+ * Edge Cases:
+ * - Problems without topics are always eligible
+ * - Falls back to standard random selection if diversity can't be achieved
+ * - Backwards compatible with existing problems (empty topics)
+ *
+ * @param db - better-sqlite3 database instance
+ * @param pool - Array of problems to select from
+ * @param count - Number of problems to select
+ * @param maxPerTopic - Maximum problems per topic (default: 2)
+ * @returns Array of selected problems with topic diversity
+ *
+ * @example
+ * ```typescript
+ * const db = getDatabase();
+ * const pool = getEligibleNew(db);
+ * const selected = selectWithTopicDiversity(db, pool, 5, 2);
+ * ```
+ */
+function selectWithTopicDiversity(
+  db: Database.Database,
+  pool: Problem[],
+  count: number,
+  maxPerTopic: number = 2
+): Problem[] {
+  if (pool.length === 0 || count === 0) {
+    return [];
+  }
+
+  // If count >= pool size, return all
+  if (count >= pool.length) {
+    return [...pool];
+  }
+
+  // Fetch topics for each problem
+  const problemTopics = new Map<number, number[]>();
+
+  if (pool.length > 0) {
+    const problemIds = pool.map(p => p.id);
+    const placeholders = problemIds.map(() => '?').join(',');
+
+    const topicQuery = `
+      SELECT problem_id, topic_id
+      FROM problem_topics
+      WHERE problem_id IN (${placeholders})
+    `;
+
+    const topicRows = db.prepare(topicQuery).all(...problemIds) as Array<{
+      problem_id: number;
+      topic_id: number;
+    }>;
+
+    // Build map of problem_id -> topic_ids
+    for (const row of topicRows) {
+      if (!problemTopics.has(row.problem_id)) {
+        problemTopics.set(row.problem_id, []);
+      }
+      problemTopics.get(row.problem_id)!.push(row.topic_id);
+    }
+  }
+
+  // Shuffle pool for randomness
+  const shuffledPool = [...pool];
+  for (let i = shuffledPool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledPool[i], shuffledPool[j]] = [shuffledPool[j], shuffledPool[i]];
+  }
+
+  // Greedy selection with diversity constraint
+  const selected: Problem[] = [];
+  const topicCounts = new Map<number, number>();
+
+  for (const problem of shuffledPool) {
+    if (selected.length >= count) {
+      break;
+    }
+
+    const topics = problemTopics.get(problem.id) || [];
+
+    // Check if selecting this problem would violate constraint
+    const wouldViolate = topics.some(topicId => {
+      const currentCount = topicCounts.get(topicId) || 0;
+      return currentCount >= maxPerTopic;
+    });
+
+    // Select if it doesn't violate constraint OR if we need to fill remaining slots
+    if (!wouldViolate) {
+      selected.push(problem);
+
+      // Update topic counts
+      for (const topicId of topics) {
+        topicCounts.set(topicId, (topicCounts.get(topicId) || 0) + 1);
+      }
+    }
+  }
+
+  // If we couldn't select enough due to constraints, fall back to filling with remaining
+  if (selected.length < count) {
+    for (const problem of shuffledPool) {
+      if (selected.length >= count) {
+        break;
+      }
+
+      if (!selected.includes(problem)) {
+        selected.push(problem);
+      }
+    }
+  }
+
+  return selected;
+}
+
+/**
  * Selects daily problems using spaced repetition algorithm
  *
  * This is the main selection algorithm that implements the core business logic:
@@ -319,13 +445,19 @@ export function selectDailyProblems(
     }
   }
 
-  // Select from each pool
-  let selectedNew = randomSelect(newPool, Math.min(targetNew, newPool.length));
-  let selectedReview = randomSelect(
+  // Select from each pool with topic diversity
+  let selectedNew = selectWithTopicDiversity(
+    db,
+    newPool,
+    Math.min(targetNew, newPool.length)
+  );
+  let selectedReview = selectWithTopicDiversity(
+    db,
     reviewPool,
     Math.min(targetReview, reviewPool.length)
   );
-  let selectedMastered = randomSelect(
+  let selectedMastered = selectWithTopicDiversity(
+    db,
     masteredPool,
     Math.min(targetMastered, masteredPool.length)
   );
@@ -341,7 +473,11 @@ export function selectDailyProblems(
     const availableNew = newPool.length - selectedNew.length;
     if (availableNew > 0) {
       const additionalNew = Math.min(remaining, availableNew);
-      selectedNew = randomSelect(newPool, selectedNew.length + additionalNew);
+      selectedNew = selectWithTopicDiversity(
+        db,
+        newPool,
+        selectedNew.length + additionalNew
+      );
       remaining -= additionalNew;
     }
 
@@ -350,7 +486,8 @@ export function selectDailyProblems(
       const availableReview = reviewPool.length - selectedReview.length;
       if (availableReview > 0) {
         const additionalReview = Math.min(remaining, availableReview);
-        selectedReview = randomSelect(
+        selectedReview = selectWithTopicDiversity(
+          db,
           reviewPool,
           selectedReview.length + additionalReview
         );
@@ -363,7 +500,8 @@ export function selectDailyProblems(
       const availableMastered = masteredPool.length - selectedMastered.length;
       if (availableMastered > 0) {
         const additionalMastered = Math.min(remaining, availableMastered);
-        selectedMastered = randomSelect(
+        selectedMastered = selectWithTopicDiversity(
+          db,
           masteredPool,
           selectedMastered.length + additionalMastered
         );
