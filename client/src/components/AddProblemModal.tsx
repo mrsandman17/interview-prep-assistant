@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import type { CreateProblemRequest } from '../api/types';
+import { TopicSelect } from './TopicSelect';
 
 interface AddProblemModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export function AddProblemModal({ isOpen, onClose, onSave }: AddProblemModalProp
   const [name, setName] = useState('');
   const [link, setLink] = useState('');
   const [keyInsight, setKeyInsight] = useState('');
+  const [topicIds, setTopicIds] = useState<number[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +31,7 @@ export function AddProblemModal({ isOpen, onClose, onSave }: AddProblemModalProp
       setName('');
       setLink('');
       setKeyInsight('');
+      setTopicIds([]);
       setError(null);
     }
   }, [isOpen]);
@@ -111,6 +114,8 @@ export function AddProblemModal({ isOpen, onClose, onSave }: AddProblemModalProp
         link: trimmedLink,
         // Only include keyInsight if it's not empty
         ...(trimmedInsight && { keyInsight: trimmedInsight }),
+        // Include topic IDs if any are selected
+        ...(topicIds.length > 0 && { topicIds }),
       };
 
       await onSave(data);
@@ -253,6 +258,18 @@ export function AddProblemModal({ isOpen, onClose, onSave }: AddProblemModalProp
                       resize-none
                     "
                     placeholder="Use a hash map to store complements for O(n) time complexity"
+                  />
+                </div>
+
+                {/* Topics */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Topics
+                  </label>
+                  <TopicSelect
+                    selectedTopicIds={topicIds}
+                    onChange={setTopicIds}
+                    disabled={isSaving}
                   />
                 </div>
 

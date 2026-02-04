@@ -10,6 +10,7 @@ export interface ParsedProblem {
   color: ProblemColor;
   last_reviewed: string | null;
   key_insight: string | null;
+  topic_names: string[];
 }
 
 /**
@@ -157,6 +158,7 @@ export function parseCSV(csvContent: string): ParseResult {
       const colorRaw = record.color?.trim() || '';
       const lastReviewedRaw = record.lastreviewed?.trim() || '';
       const keyInsightRaw = record.keyinsight?.trim() || '';
+      const topicsRaw = record.topics?.trim() || '';
 
       // Sanitize fields for CSV injection
       const name = sanitizeCSVField(nameRaw);
@@ -257,6 +259,11 @@ export function parseCSV(csvContent: string): ParseResult {
       // Handle key_insight (can be empty)
       const keyInsight: string | null = keyInsightSanitized || null;
 
+      // Parse topics (comma-separated, optional)
+      const topicNames: string[] = topicsRaw
+        ? topicsRaw.split(',').map(t => t.trim()).filter(t => t.length > 0)
+        : [];
+
       // Add normalized link to seen links
       seenLinks.add(normalizedLink);
 
@@ -267,6 +274,7 @@ export function parseCSV(csvContent: string): ParseResult {
         color,
         last_reviewed: lastReviewed,
         key_insight: keyInsight,
+        topic_names: topicNames,
       });
     });
   } catch (error) {

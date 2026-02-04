@@ -19,6 +19,7 @@ import type {
   ImportProblemsResponse,
   RandomInsight,
   ApiError,
+  Topic,
 } from './types';
 
 /**
@@ -85,6 +86,7 @@ export const problemsApi = {
       link: data.link,
       ...(data.keyInsight && { key_insight: data.keyInsight }),
       ...(data.color && { color: data.color }),
+      ...(data.topicIds && { topic_ids: data.topicIds }),
     };
 
     return fetchJSON<Problem>('/api/problems', {
@@ -138,6 +140,7 @@ export const problemsApi = {
     if (data.link !== undefined) payload.link = data.link;
     if (data.color !== undefined) payload.color = data.color;
     if (data.keyInsight !== undefined) payload.key_insight = data.keyInsight;
+    if (data.topicIds !== undefined) payload.topic_ids = data.topicIds;
 
     return fetchJSON<Problem>(`/api/problems/${id}`, {
       method: 'PATCH',
@@ -272,5 +275,43 @@ export const settingsApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+  },
+};
+
+/**
+ * Topics API
+ */
+export const topicsApi = {
+  /**
+   * Get all topics (alphabetically sorted)
+   */
+  getAll: async (): Promise<Topic[]> => {
+    return fetchJSON<Topic[]>('/api/topics');
+  },
+
+  /**
+   * Create a new topic
+   */
+  create: async (name: string): Promise<Topic> => {
+    return fetchJSON<Topic>('/api/topics', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  },
+
+  /**
+   * Delete a topic (cascades to problem_topics)
+   */
+  delete: async (id: number): Promise<void> => {
+    const response = await fetch(`/api/topics/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json().catch(() => ({
+        error: `HTTP ${response.status}: ${response.statusText}`,
+      }));
+      throw new Error(error.error || `Failed to delete topic: HTTP ${response.status}`);
+    }
   },
 };

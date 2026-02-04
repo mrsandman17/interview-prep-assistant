@@ -266,6 +266,18 @@ export function ProblemsTable({ problems, onEdit, onDelete, onReview, isLoading,
                         >
                           View Problem
                         </a>
+                        {problem.topics && problem.topics.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {problem.topics.map(topic => (
+                              <span
+                                key={topic.id}
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                              >
+                                {topic.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

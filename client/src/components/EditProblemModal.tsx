@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import type { Problem, ProblemColor } from '../api/types';
+import { TopicSelect } from './TopicSelect';
 
 interface EditProblemModalProps {
   problem: Problem | null;
@@ -14,6 +15,7 @@ interface EditProblemModalProps {
     link?: string;
     keyInsight?: string;
     color?: ProblemColor;
+    topicIds?: number[];
   }) => Promise<void>;
 }
 
@@ -34,6 +36,7 @@ export function EditProblemModal({ problem, isOpen, onClose, onSave }: EditProbl
   const [link, setLink] = useState('');
   const [keyInsight, setKeyInsight] = useState('');
   const [color, setColor] = useState<ProblemColor>('gray');
+  const [topicIds, setTopicIds] = useState<number[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +47,7 @@ export function EditProblemModal({ problem, isOpen, onClose, onSave }: EditProbl
       setLink(problem.link);
       setKeyInsight(problem.keyInsight || '');
       setColor(problem.color);
+      setTopicIds(problem.topics?.map(t => t.id) || []);
       setError(null);
     }
   }, [problem]);
@@ -115,6 +119,7 @@ export function EditProblemModal({ problem, isOpen, onClose, onSave }: EditProbl
         link?: string;
         keyInsight?: string;
         color?: ProblemColor;
+        topicIds?: number[];
       } = {};
 
       if (trimmedName !== problem.name) updates.name = trimmedName;
@@ -124,6 +129,15 @@ export function EditProblemModal({ problem, isOpen, onClose, onSave }: EditProbl
         updates.keyInsight = trimmedInsight || undefined;
       }
       if (color !== problem.color) updates.color = color;
+
+      // Check if topics changed
+      const originalTopicIds = problem.topics?.map(t => t.id) || [];
+      const topicsChanged =
+        topicIds.length !== originalTopicIds.length ||
+        !topicIds.every(id => originalTopicIds.includes(id));
+      if (topicsChanged) {
+        updates.topicIds = topicIds;
+      }
 
       // Only save if there are changes
       if (Object.keys(updates).length === 0) {
@@ -287,6 +301,18 @@ export function EditProblemModal({ problem, isOpen, onClose, onSave }: EditProbl
                       resize-none
                     "
                     placeholder="Describe your key insight or approach. Add #tags to categorize patterns (e.g., #arrays #hash-map #two-pointers)"
+                  />
+                </div>
+
+                {/* Topics */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Topics
+                  </label>
+                  <TopicSelect
+                    selectedTopicIds={topicIds}
+                    onChange={setTopicIds}
+                    disabled={isSaving}
                   />
                 </div>
               </div>
