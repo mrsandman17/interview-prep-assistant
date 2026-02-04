@@ -288,7 +288,7 @@ describe('POST /api/problems', () => {
 
 describe('POST /api/problems/import', () => {
   it('imports valid CSV with all fields', async () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://leetcode.com/problems/two-sum,gray,,Use hash map
 Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,2024-01-15,Use a stack`;
 
@@ -311,7 +311,7 @@ Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,2024-01
   });
 
   it('imports CSV with minimal required fields', async () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://leetcode.com/problems/two-sum,,,`;
 
     const response = await request(app)
@@ -338,7 +338,7 @@ Two Sum,https://leetcode.com/problems/two-sum,,,`;
       'https://leetcode.com/problems/two-sum'
     );
 
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 Two Sum,https://leetcode.com/problems/two-sum,,,
 Valid Parentheses,https://leetcode.com/problems/valid-parentheses,,,`;
 
@@ -353,7 +353,7 @@ Valid Parentheses,https://leetcode.com/problems/valid-parentheses,,,`;
   });
 
   it('reports CSV parsing errors', async () => {
-    const csv = `Problem,Link,Color,LastReviewed,KeyInsight
+    const csv = `Problem,Link,Color,LastReviewed,KeyInsight,Topics
 ,https://leetcode.com/problems/two-sum,,,
 Valid Parentheses,,,,`;
 
@@ -704,7 +704,7 @@ describe('GET /api/problems/export', () => {
     const response = await request(app).get('/api/problems/export');
 
     expect(response.status).toBe(200);
-    expect(response.text).toBe('Problem,Link,Color,LastReviewed,KeyInsight\n');
+    expect(response.text).toBe('Problem,Link,Color,LastReviewed,KeyInsight,Topics\n');
   });
 
   it('exports single problem with all fields', async () => {
@@ -721,8 +721,8 @@ describe('GET /api/problems/export', () => {
 
     expect(response.status).toBe(200);
     const lines = response.text.split('\n');
-    expect(lines[0]).toBe('Problem,Link,Color,LastReviewed,KeyInsight');
-    expect(lines[1]).toBe('Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,2024-01-15,Use a stack');
+    expect(lines[0]).toBe('Problem,Link,Color,LastReviewed,KeyInsight,Topics');
+    expect(lines[1]).toBe('Valid Parentheses,https://leetcode.com/problems/valid-parentheses,yellow,2024-01-15,Use a stack,');
   });
 
   it('exports single problem with null key_insight and last_reviewed', async () => {
@@ -737,7 +737,7 @@ describe('GET /api/problems/export', () => {
 
     expect(response.status).toBe(200);
     const lines = response.text.split('\n');
-    expect(lines[1]).toBe('Two Sum,https://leetcode.com/problems/two-sum,gray,,');
+    expect(lines[1]).toBe('Two Sum,https://leetcode.com/problems/two-sum,gray,,,');
   });
 
   it('exports multiple problems with various data', async () => {
@@ -770,7 +770,7 @@ describe('GET /api/problems/export', () => {
     expect(response.status).toBe(200);
     const lines = response.text.split('\n').filter(line => line.length > 0);
     expect(lines).toHaveLength(4); // 1 header + 3 data rows
-    expect(lines[0]).toBe('Problem,Link,Color,LastReviewed,KeyInsight');
+    expect(lines[0]).toBe('Problem,Link,Color,LastReviewed,KeyInsight,Topics');
     // Problems should be ordered by creation date (newest first)
     expect(lines[1]).toContain('Merge Intervals');
     expect(lines[2]).toContain('Valid Parentheses');
@@ -810,7 +810,7 @@ describe('GET /api/problems/export', () => {
     const text = response.text;
     // Fields with commas should be wrapped in quotes
     expect(text).toContain('"Problem A, B, C"');
-    expect(text).toContain('"Use arrays, maps, and sets"');
+    expect(text).toContain('"Use arrays, maps, and sets",');
   });
 
   it('exports problems with proper CSV escaping for newlines', async () => {
@@ -961,7 +961,7 @@ describe('GET /api/problems/export', () => {
     expect(response.status).toBe(200);
     const lines = response.text.split('\n');
     // Empty string should result in empty CSV field
-    expect(lines[1]).toBe('Test Problem,https://leetcode.com/problems/test,gray,,');
+    expect(lines[1]).toBe('Test Problem,https://leetcode.com/problems/test,gray,,,');
   });
 
   it('handles very long field values', async () => {
