@@ -3,8 +3,8 @@
  */
 
 import { useState, useEffect, useMemo, Component } from 'react';
-import { problemsApi } from '../api/client';
-import type { Problem, ProblemColor, CreateProblemRequest } from '../api/types';
+import { problemsApi, topicsApi } from '../api/client';
+import type { Problem, ProblemColor, CreateProblemRequest, Topic } from '../api/types';
 import { ImportModal } from '../components/ImportModal';
 import { FilterBar } from '../components/FilterBar';
 import { ProblemsTable } from '../components/ProblemsTable';
@@ -63,6 +63,9 @@ function AllProblemsContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Topics state
+  const [topics, setTopics] = useState<Topic[]>([]);
+
   // Import modal state
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importSuccess, setImportSuccess] = useState<{ imported: number; skipped: number } | null>(null);
@@ -77,6 +80,7 @@ function AllProblemsContent() {
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedColor, setSelectedColor] = useState<ProblemColor | 'all'>('all');
+  const [selectedTopicIds, setSelectedTopicIds] = useState<number[]>([]);
 
   // Expandable row state
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
@@ -104,11 +108,23 @@ function AllProblemsContent() {
     }
   };
 
+  // Fetch topics on mount
+  const fetchTopics = async () => {
+    try {
+      const data = await topicsApi.getAll();
+      setTopics(data);
+    } catch (err) {
+      console.error('Failed to load topics:', err);
+      // Don't set error state for topics - it's not critical
+    }
+  };
+
   useEffect(() => {
     fetchProblems();
+    fetchTopics();
   }, []);
 
-  // Filter problems based on search and color
+  // Filter problems based on search, color, and topics
   const filteredProblems = useMemo(() => {
     return problems.filter((problem) => {
       // Search filter
@@ -118,14 +134,20 @@ function AllProblemsContent() {
       // Color filter
       const matchesColor = selectedColor === 'all' || problem.color === selectedColor;
 
-      return matchesSearch && matchesColor;
+      // Topic filter - problem must have ALL selected topics
+      const matchesTopics = selectedTopicIds.length === 0 ||
+        selectedTopicIds.every(topicId =>
+          problem.topics?.some(t => t.id === topicId)
+        );
+
+      return matchesSearch && matchesColor && matchesTopics;
     });
-  }, [problems, searchQuery, selectedColor]);
+  }, [problems, searchQuery, selectedColor, selectedTopicIds]);
 
   // Reset expanded row when filters change
   useEffect(() => {
     setExpandedRowId(null);
-  }, [searchQuery, selectedColor]);
+  }, [searchQuery, selectedColor, selectedTopicIds]);
 
   const handleImportSuccess = (result: { imported: number; skipped: number }) => {
     setImportSuccess(result);
@@ -433,6 +455,9 @@ function AllProblemsContent() {
         onSearchChange={setSearchQuery}
         selectedColor={selectedColor}
         onColorChange={setSelectedColor}
+        selectedTopicIds={selectedTopicIds}
+        onTopicIdsChange={setSelectedTopicIds}
+        topics={topics}
       />
 
       {/* Problems Table */}

@@ -129,7 +129,7 @@ export function TopicSelect({
 
       {/* Dropdown menu */}
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-96 overflow-auto">
           {/* Search input */}
           <div className="p-2 border-b border-gray-200">
             <input
